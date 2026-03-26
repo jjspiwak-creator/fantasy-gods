@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ESPN Fantasy Football Trade Simulator API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: espn
+    description: ESPN Fantasy Football operations
+  - name: trades
+    description: Trade simulation operations
 paths:
   /healthz:
     get:
@@ -24,6 +27,198 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /espn/connect:
+    post:
+      operationId: connectEspn
+      tags: [espn]
+      summary: Connect ESPN account
+      description: Store ESPN credentials (s2 cookie and SWID) to access private leagues
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EspnConnectBody"
+      responses:
+        "200":
+          description: Connection verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EspnConnectResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /espn/leagues:
+    get:
+      operationId: getLeagues
+      tags: [espn]
+      summary: Get user leagues
+      description: Returns all fantasy football leagues for the connected account
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of leagues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/League"
+        "401":
+          description: Not connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /espn/leagues/{leagueId}/teams:
+    get:
+      operationId: getLeagueTeams
+      tags: [espn]
+      summary: Get teams in a league
+      description: Returns all teams in the specified league with their rosters
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: season
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of teams with rosters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /trades/simulate:
+    post:
+      operationId: simulateTrade
+      tags: [trades]
+      summary: Simulate a multi-team trade
+      description: Simulate a trade involving 2 or more teams and calculate before/after rosters and scores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulateTradeBody"
+      responses:
+        "200":
+          description: Trade simulation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeSimulationResult"
+        "400":
+          description: Invalid trade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /trades/saved:
+    get:
+      operationId: getSavedTrades
+      tags: [trades]
+      summary: Get saved trade simulations
+      description: Returns all saved trade scenarios for the given session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of saved trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedTrade"
+    post:
+      operationId: saveTrade
+      tags: [trades]
+      summary: Save a trade simulation
+      description: Save a trade simulation result for later reference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveTradeBody"
+      responses:
+        "201":
+          description: Trade saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedTrade"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /trades/saved/{tradeId}:
+    delete:
+      operationId: deleteSavedTrade
+      tags: [trades]
+      summary: Delete a saved trade
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +229,270 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    EspnConnectBody:
+      type: object
+      properties:
+        espnS2:
+          type: string
+          description: ESPN S2 cookie value
+        swid:
+          type: string
+          description: ESPN SWID cookie value
+      required:
+        - espnS2
+        - swid
+
+    EspnConnectResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        username:
+          type: string
+        connected:
+          type: boolean
+      required:
+        - sessionId
+        - connected
+
+    League:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        season:
+          type: integer
+        currentWeek:
+          type: integer
+        teamCount:
+          type: integer
+        scoringType:
+          type: string
+      required:
+        - id
+        - name
+        - season
+        - currentWeek
+        - teamCount
+
+    Player:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        position:
+          type: string
+        nflTeam:
+          type: string
+        points:
+          type: number
+        projectedPoints:
+          type: number
+        tradeValue:
+          type: number
+        isStarter:
+          type: boolean
+        injuryStatus:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - position
+        - nflTeam
+        - points
+        - projectedPoints
+        - tradeValue
+        - isStarter
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        abbreviation:
+          type: string
+        ownerName:
+          type: string
+        wins:
+          type: integer
+        losses:
+          type: integer
+        ties:
+          type: integer
+        pointsFor:
+          type: number
+        pointsAgainst:
+          type: number
+        totalTradeValue:
+          type: number
+        roster:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+      required:
+        - id
+        - name
+        - ownerName
+        - wins
+        - losses
+        - ties
+        - pointsFor
+        - pointsAgainst
+        - totalTradeValue
+        - roster
+
+    TradeParticipant:
+      type: object
+      properties:
+        teamId:
+          type: string
+        givingPlayerIds:
+          type: array
+          items:
+            type: string
+      required:
+        - teamId
+        - givingPlayerIds
+
+    SimulateTradeBody:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        leagueId:
+          type: string
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradeParticipant"
+          minItems: 2
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/Team"
+      required:
+        - sessionId
+        - leagueId
+        - participants
+        - teams
+
+    TeamTradeResult:
+      type: object
+      properties:
+        teamId:
+          type: string
+        teamName:
+          type: string
+        ownerName:
+          type: string
+        playersGiven:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        playersReceived:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        rosterBefore:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        rosterAfter:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        tradeValueBefore:
+          type: number
+        tradeValueAfter:
+          type: number
+        tradeValueChange:
+          type: number
+        verdict:
+          type: string
+          description: "win, loss, or neutral"
+      required:
+        - teamId
+        - teamName
+        - ownerName
+        - playersGiven
+        - playersReceived
+        - rosterBefore
+        - rosterAfter
+        - tradeValueBefore
+        - tradeValueAfter
+        - tradeValueChange
+        - verdict
+
+    TradeSimulationResult:
+      type: object
+      properties:
+        leagueId:
+          type: string
+        teamResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamTradeResult"
+        overallBalance:
+          type: number
+          description: Sum of all value changes (should be ~0 for fair trades)
+        summary:
+          type: string
+      required:
+        - leagueId
+        - teamResults
+        - overallBalance
+        - summary
+
+    SaveTradeBody:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        leagueId:
+          type: string
+        name:
+          type: string
+        result:
+          $ref: "#/components/schemas/TradeSimulationResult"
+      required:
+        - sessionId
+        - leagueId
+        - name
+        - result
+
+    SavedTrade:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: string
+        leagueId:
+          type: string
+        name:
+          type: string
+        result:
+          $ref: "#/components/schemas/TradeSimulationResult"
+        createdAt:
+          type: string
+      required:
+        - id
+        - sessionId
+        - leagueId
+        - name
+        - result
+        - createdAt

@@ -1,0 +1,248 @@
+import { logger } from "./logger";
+
+export interface EspnCredentials {
+  espnS2: string;
+  swid: string;
+}
+
+export interface EspnLeague {
+  id: string;
+  name: string;
+  season: number;
+  currentWeek: number;
+  teamCount: number;
+  scoringType: string;
+}
+
+export interface EspnPlayer {
+  id: string;
+  name: string;
+  position: string;
+  nflTeam: string;
+  points: number;
+  projectedPoints: number;
+  tradeValue: number;
+  isStarter: boolean;
+  injuryStatus: string | null;
+}
+
+export interface EspnTeam {
+  id: string;
+  name: string;
+  abbreviation: string;
+  ownerName: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  totalTradeValue: number;
+  roster: EspnPlayer[];
+}
+
+const ESPN_BASE = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl";
+
+const POSITION_MAP: Record<number, string> = {
+  1: "QB",
+  2: "RB",
+  3: "WR",
+  4: "TE",
+  5: "K",
+  16: "D/ST",
+  17: "QB",
+  20: "QB",
+  21: "RB",
+  22: "WR",
+  23: "TE",
+  24: "FLEX",
+};
+
+const NFL_TEAMS: Record<number, string> = {
+  1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE",
+  6: "DAL", 7: "DEN", 8: "DET", 9: "GB", 10: "TEN",
+  11: "IND", 12: "KC", 13: "LV", 14: "LAR", 15: "MIA",
+  16: "MIN", 17: "NE", 18: "NO", 19: "NYG", 20: "NYJ",
+  21: "PHI", 22: "ARI", 23: "PIT", 24: "LAC", 25: "SF",
+  26: "SEA", 27: "TB", 28: "WSH", 29: "CAR", 30: "JAX",
+  33: "BAL", 34: "HOU",
+};
+
+function buildHeaders(creds: EspnCredentials) {
+  return {
+    Cookie: `espn_s2=${creds.espnS2}; SWID=${creds.swid}`,
+    "X-Fantasy-Filter": JSON.stringify({}),
+    "Accept": "application/json",
+  };
+}
+
+export async function fetchUserLeagues(creds: EspnCredentials, season = new Date().getFullYear()): Promise<EspnLeague[]> {
+  const url = `${ESPN_BASE}/leagueHistory?leagueId=0&season=${season}&view=mLeagueSettings`;
+
+  const swid = creds.swid.replace(/[{}]/g, "");
+  const meUrl = `https://registerdisney.go.com/jgc/v6/client/ESPN-ONESITE.WEB-PROD/guest/refresh-auth?langPref=en-US`;
+
+  const leaguesUrl = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues?view=mLeagueSettings`;
+
+  try {
+    const memberUrl = `https://fantasy.espn.com/apis/v3/games/ffl/seasons/${season}?view=proTeamSchedules_wl`;
+    const headers = buildHeaders(creds);
+
+    const leagueIds = await getUserLeagueIds(creds, season);
+
+    const leagues: EspnLeague[] = [];
+    for (const leagueId of leagueIds) {
+      try {
+        const leagueData = await fetchLeagueData(creds, leagueId, season);
+        if (leagueData) leagues.push(leagueData);
+      } catch (e) {
+        logger.warn({ leagueId, err: e }, "Failed to fetch league data");
+      }
+    }
+    return leagues;
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch user leagues");
+    throw new Error("Failed to fetch leagues from ESPN. Please verify your credentials.");
+  }
+}
+
+async function getUserLeagueIds(creds: EspnCredentials, season: number): Promise<string[]> {
+  const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}?view=proTeamSchedules_wl`;
+  const headers = buildHeaders(creds);
+
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) {
+    throw new Error(`ESPN API returned ${resp.status}`);
+  }
+
+  const data: any = await resp.json();
+
+  const leaguesUrl = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues?view=mLeagueSettings&filterLeagueIds={"value":[]}`;
+
+  const swidClean = creds.swid.replace(/[{}]/g, "");
+  const profileUrl = `https://fantasy.espn.com/apis/v3/games/ffl/seasons/${season}?view=kona_player_info`;
+
+  const favoritesUrl = `https://fantasy.espn.com/apis/v3/games/ffl/leagueHistory/0?seasonId=${season}&view=mLiveScoring&view=mMatchupScore&view=mTeam`;
+
+  const meUrl = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues?view=mLeagueSettings&view=mStatus`;
+
+  const searchHeaders = {
+    ...buildHeaders(creds),
+    "X-Fantasy-Source": "kona",
+  };
+
+  const searchResp = await fetch(meUrl, { headers: searchHeaders });
+  if (searchResp.ok) {
+    const searchData: any = await searchResp.json();
+    if (Array.isArray(searchData)) {
+      return searchData.map((l: any) => String(l.id)).filter(Boolean);
+    }
+    if (searchData?.id) return [String(searchData.id)];
+  }
+
+  return [];
+}
+
+async function fetchLeagueData(creds: EspnCredentials, leagueId: string, season: number): Promise<EspnLeague | null> {
+  const url = `${ESPN_BASE}/seasons/${season}/segments/0/leagues/${leagueId}?view=mSettings&view=mStatus`;
+  const headers = buildHeaders(creds);
+
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) return null;
+
+  const data: any = await resp.json();
+  const settings = data.settings || {};
+  const status = data.status || {};
+
+  return {
+    id: String(data.id || leagueId),
+    name: settings.name || `League ${leagueId}`,
+    season: data.seasonId || season,
+    currentWeek: status.currentMatchupPeriod || 1,
+    teamCount: settings.size || 10,
+    scoringType: settings.scoringSettings?.scoringType || "H2H_POINTS",
+  };
+}
+
+export async function fetchLeagueTeams(creds: EspnCredentials, leagueId: string, season = new Date().getFullYear()): Promise<EspnTeam[]> {
+  const url = `${ESPN_BASE}/seasons/${season}/segments/0/leagues/${leagueId}?view=mRoster&view=mTeam&view=mMatchupScore`;
+  const headers = buildHeaders(creds);
+
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) {
+    throw new Error(`ESPN API returned ${resp.status} for league ${leagueId}`);
+  }
+
+  const data: any = await resp.json();
+  const teams: any[] = data.teams || [];
+  const members: any[] = data.members || [];
+
+  const memberMap: Record<string, string> = {};
+  for (const member of members) {
+    memberMap[member.id] = `${member.firstName} ${member.lastName}`;
+  }
+
+  return teams.map((team: any) => {
+    const owner = team.owners?.[0] ? memberMap[team.owners[0]] || "Unknown" : "Unknown";
+    const record = team.record?.overall || {};
+    const roster = parseRoster(team.roster?.entries || []);
+    const totalTradeValue = roster.reduce((sum: number, p: EspnPlayer) => sum + p.tradeValue, 0);
+
+    return {
+      id: String(team.id),
+      name: team.name || `Team ${team.id}`,
+      abbreviation: team.abbrev || "",
+      ownerName: owner,
+      wins: record.wins || 0,
+      losses: record.losses || 0,
+      ties: record.ties || 0,
+      pointsFor: team.record?.overall?.pointsFor || 0,
+      pointsAgainst: team.record?.overall?.pointsAgainst || 0,
+      totalTradeValue,
+      roster,
+    };
+  });
+}
+
+function parseRoster(entries: any[]): EspnPlayer[] {
+  return entries.map((entry: any) => {
+    const playerInfo = entry.playerPoolEntry?.player || {};
+    const stats = entry.playerPoolEntry?.player?.stats || [];
+    const projStats = stats.find((s: any) => s.statSplitTypeId === 5) || {};
+    const actualStats = stats.find((s: any) => s.statSplitTypeId === 0) || {};
+
+    const position = POSITION_MAP[playerInfo.defaultPositionId] || "FLEX";
+    const nflTeamId = playerInfo.proTeamId || 0;
+    const injuryStatus = entry.playerPoolEntry?.injuryStatus || null;
+    const tradeValue = entry.playerPoolEntry?.acquisitionType === "DRAFT"
+      ? (entry.playerPoolEntry?.keeperValue || estimateTradeValue(playerInfo))
+      : estimateTradeValue(playerInfo);
+
+    return {
+      id: String(playerInfo.id || entry.playerId),
+      name: playerInfo.fullName || "Unknown",
+      position,
+      nflTeam: NFL_TEAMS[nflTeamId] || "FA",
+      points: actualStats.appliedTotal || 0,
+      projectedPoints: projStats.appliedTotal || 0,
+      tradeValue,
+      isStarter: isStarterSlot(entry.lineupSlotId),
+      injuryStatus: injuryStatus === "ACTIVE" ? null : injuryStatus,
+    };
+  });
+}
+
+function isStarterSlot(slotId: number): boolean {
+  const starterSlots = [0, 2, 4, 6, 17, 16, 23];
+  return starterSlots.includes(slotId);
+}
+
+function estimateTradeValue(player: any): number {
+  const stats = player.stats || [];
+  const season = stats.find((s: any) => s.statSplitTypeId === 0 && s.scoringPeriodId === 0);
+  if (!season) return 10;
+  return Math.round((season.appliedTotal || 10) * 1.5);
+}
+
+export function verifyCredentials(creds: EspnCredentials): boolean {
+  return !!(creds.espnS2 && creds.swid && creds.espnS2.length > 20 && creds.swid.length > 5);
+}

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "ESPN Fantasy Trade Simulator"
+version = "1.0.0"
+id = "artifacts/trade-sim"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22407
+
+[services.development]
+run = "pnpm --filter @workspace/trade-sim run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/trade-sim", "run", "build" ]
+publicDir = "artifacts/trade-sim/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22407"
+BASE_PATH = "/"

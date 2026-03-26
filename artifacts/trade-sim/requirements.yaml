@@ -1,0 +1,14 @@
+packages:
+  "framer-motion": "For smooth, dynamic animations suitable for a sports analytics dashboard"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for cleanly merging tailwind classes without style conflicts"
+  "zustand": "Lightweight global state management for the user session and trade builder state"
+
+images:
+  - path: "artifacts/trade-sim/public/images/hero-bg.png"
+    description: "Dark, moody sports analytics abstract background. Glowing cyan and neon green data lines, geometric tech patterns, deep black and charcoal canvas, professional broadcast graphics style."
+    aspect_ratio: "16:9"
+
+notes:
+  - Expecting @workspace/api-client-react to be available for generated API hooks.
+  - Relying on sessionStorage for ESPN sessionId persistence.
