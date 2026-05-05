@@ -28,7 +28,7 @@ router.post("/espn/connect", async (req, res): Promise<void> => {
   }
 
   try {
-    const sessionId = createSession({ espnS2, swid });
+    const sessionId = await createSession({ espnS2, swid });
 
     const result = ConnectEspnResponse.parse({
       sessionId,
@@ -38,7 +38,7 @@ router.post("/espn/connect", async (req, res): Promise<void> => {
     res.json(result);
   } catch (err) {
     req.log.error({ err }, "ESPN connect error");
-    res.status(401).json({ error: "Failed to connect to ESPN. Please verify your credentials." });
+    res.status(500).json({ error: "Failed to create session. Please try again." });
   }
 });
 
@@ -49,9 +49,9 @@ router.get("/espn/leagues", async (req, res): Promise<void> => {
     return;
   }
 
-  const creds = getSession(params.data.sessionId);
+  const creds = await getSession(params.data.sessionId);
   if (!creds) {
-    res.status(401).json({ error: "Session not found. Please reconnect your ESPN account." });
+    res.status(401).json({ error: "Session not found or expired. Please reconnect your ESPN account." });
     return;
   }
 
@@ -69,7 +69,7 @@ router.get("/espn/leagues", async (req, res): Promise<void> => {
     res.json(GetLeaguesResponse.parse(leagues));
   } catch (err) {
     req.log.error({ err }, "Failed to fetch leagues");
-    res.status(500).json({ error: "Failed to fetch leagues from ESPN." });
+    res.status(500).json({ error: "Failed to fetch leagues from ESPN. Please check your credentials." });
   }
 });
 
@@ -86,9 +86,9 @@ router.get("/espn/leagues/:leagueId/teams", async (req, res): Promise<void> => {
     return;
   }
 
-  const creds = getSession(queryParams.data.sessionId);
+  const creds = await getSession(queryParams.data.sessionId);
   if (!creds) {
-    res.status(401).json({ error: "Session not found. Please reconnect your ESPN account." });
+    res.status(401).json({ error: "Session not found or expired. Please reconnect your ESPN account." });
     return;
   }
 
