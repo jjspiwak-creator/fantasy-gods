@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerCard } from "@/components/player-card";
 import { GitCompareArrows, ArrowRight, Save, Trash2, CheckCircle2, ChevronRight, Scale } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn, formatTradeValue, getVerdictColor } from "@/lib/utils";
+import { cn, formatTradeValue, getVerdictColor, getGradeColor, getGradeBg } from "@/lib/utils";
 import type { TradeSimulationResult, TeamTradeResult } from "@workspace/api-client-react";
 
 export function TradeBuilderPage() {
@@ -230,49 +230,67 @@ export function TradeBuilderPage() {
 }
 
 function TradeResultCard({ result }: { result: TeamTradeResult }) {
+  const gradeColor = getGradeColor(result.grade);
+  const gradeBg = getGradeBg(result.grade);
+
   return (
-    <Card className={cn("overflow-hidden border-2", getVerdictColor(result.verdict).split(' ')[1])}>
-      <div className={cn("px-6 py-4 flex justify-between items-center border-b", getVerdictColor(result.verdict).split(' ')[2])}>
-        <div>
-          <h3 className="font-bold text-xl text-white">{result.teamName}</h3>
-          <p className="text-sm opacity-80 uppercase tracking-wider font-bold">{result.verdict}</p>
+    <Card className="overflow-hidden border border-white/10 bg-card/80">
+      {/* Header: team name + grade badge side by side */}
+      <div className="px-5 py-4 flex items-center justify-between border-b border-white/10 bg-black/20">
+        <div className="min-w-0">
+          <h3 className="font-bold text-lg text-white truncate">{result.teamName}</h3>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mt-0.5">{result.ownerName}</p>
         </div>
-        <div className="text-right">
-          <div className="text-xs uppercase font-bold opacity-80 mb-1">Value Change</div>
-          <div className={cn("font-display text-3xl font-bold tabular-nums", getVerdictColor(result.verdict).split(' ')[0])}>
-            {formatTradeValue(result.tradeValueChange)}
-          </div>
+
+        {/* Grade + score */}
+        <div className={cn("flex flex-col items-center justify-center rounded-xl border-2 px-4 py-2 ml-4 shrink-0", gradeBg)}>
+          <span className={cn("font-display text-4xl font-black leading-none", gradeColor)}>{result.grade}</span>
+          <span className={cn("text-xs font-bold mt-0.5", gradeColor)}>{result.score}/100</span>
         </div>
       </div>
-      
-      <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/10 bg-black/20">
-        <div className="p-6 space-y-4">
-          <h4 className="text-sm font-bold text-destructive flex items-center gap-2 uppercase tracking-wider">
-            <Trash2 className="w-4 h-4" /> Giving
+
+      {/* Rationale strip */}
+      <div className={cn("px-5 py-2 text-xs font-medium border-b border-white/5", gradeColor, "bg-black/10")}>
+        {result.gradeRationale}
+      </div>
+
+      {/* Value change bar */}
+      <div className="px-5 py-3 flex items-center gap-3 border-b border-white/5 bg-black/10">
+        <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Value Change</span>
+        <span className={cn(
+          "font-display text-xl font-bold tabular-nums",
+          result.tradeValueChange > 0 ? "text-success" : result.tradeValueChange < 0 ? "text-destructive" : "text-muted-foreground"
+        )}>
+          {formatTradeValue(result.tradeValueChange)}
+        </span>
+        <span className="text-xs text-muted-foreground ml-auto">
+          {result.tradeValueBefore.toFixed(1)} → {result.tradeValueAfter.toFixed(1)}
+        </span>
+      </div>
+
+      {/* Players given / received */}
+      <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
+        <div className="p-5 space-y-3">
+          <h4 className="text-xs font-bold text-destructive flex items-center gap-1.5 uppercase tracking-wider">
+            <Trash2 className="w-3.5 h-3.5" /> Giving
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {result.playersGiven.length > 0 ? result.playersGiven.map(p => (
               <PlayerCard key={p.id} player={p} compact className="bg-destructive/5 border-destructive/20" />
-            )) : <div className="text-sm text-muted-foreground">None</div>}
+            )) : <div className="text-sm text-muted-foreground italic">None</div>}
           </div>
         </div>
-        
-        <div className="p-6 space-y-4">
-          <h4 className="text-sm font-bold text-success flex items-center gap-2 uppercase tracking-wider">
-            <CheckCircle2 className="w-4 h-4" /> Receiving
+
+        <div className="p-5 space-y-3">
+          <h4 className="text-xs font-bold text-success flex items-center gap-1.5 uppercase tracking-wider">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Receiving
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {result.playersReceived.length > 0 ? result.playersReceived.map(p => (
               <PlayerCard key={p.id} player={p} compact className="bg-success/5 border-success/20" />
-            )) : <div className="text-sm text-muted-foreground">None</div>}
+            )) : <div className="text-sm text-muted-foreground italic">None</div>}
           </div>
         </div>
-      </div>
-      
-      <div className="px-6 py-4 bg-card border-t border-white/5 flex justify-between items-center text-sm font-medium">
-        <span className="text-muted-foreground">Roster Value Before: <span className="text-white">{result.tradeValueBefore.toFixed(1)}</span></span>
-        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-        <span className="text-muted-foreground">After: <span className="text-white">{result.tradeValueAfter.toFixed(1)}</span></span>
       </div>
     </Card>
   );

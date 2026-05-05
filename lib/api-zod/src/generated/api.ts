@@ -197,6 +197,15 @@ export const SimulateTradeResponse = zod.object({
       tradeValueAfter: zod.number(),
       tradeValueChange: zod.number(),
       verdict: zod.string().describe("win, loss, or neutral"),
+      grade: zod
+        .string()
+        .describe(
+          "Letter grade A+ through F for this team's side of the trade",
+        ),
+      score: zod
+        .number()
+        .describe("Numeric score 0-100 for this team's side of the trade"),
+      gradeRationale: zod.string().describe("Short explanation of the grade"),
     }),
   ),
   overallBalance: zod
@@ -281,6 +290,15 @@ export const GetSavedTradesResponseItem = zod.object({
         tradeValueAfter: zod.number(),
         tradeValueChange: zod.number(),
         verdict: zod.string().describe("win, loss, or neutral"),
+        grade: zod
+          .string()
+          .describe(
+            "Letter grade A+ through F for this team's side of the trade",
+          ),
+        score: zod
+          .number()
+          .describe("Numeric score 0-100 for this team's side of the trade"),
+        gradeRationale: zod.string().describe("Short explanation of the grade"),
       }),
     ),
     overallBalance: zod
@@ -363,6 +381,15 @@ export const SaveTradeBody = zod.object({
         tradeValueAfter: zod.number(),
         tradeValueChange: zod.number(),
         verdict: zod.string().describe("win, loss, or neutral"),
+        grade: zod
+          .string()
+          .describe(
+            "Letter grade A+ through F for this team's side of the trade",
+          ),
+        score: zod
+          .number()
+          .describe("Numeric score 0-100 for this team's side of the trade"),
+        gradeRationale: zod.string().describe("Short explanation of the grade"),
       }),
     ),
     overallBalance: zod

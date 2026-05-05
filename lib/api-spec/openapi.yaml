@@ -424,6 +424,15 @@ components:
         verdict:
           type: string
           description: "win, loss, or neutral"
+        grade:
+          type: string
+          description: "Letter grade A+ through F for this team's side of the trade"
+        score:
+          type: number
+          description: "Numeric score 0-100 for this team's side of the trade"
+        gradeRationale:
+          type: string
+          description: "Short explanation of the grade"
       required:
         - teamId
         - teamName
@@ -436,6 +445,9 @@ components:
         - tradeValueAfter
         - tradeValueChange
         - verdict
+        - grade
+        - score
+        - gradeRationale
 
     TradeSimulationResult:
       type: object

@@ -20,4 +20,10 @@ export interface TeamTradeResult {
   tradeValueChange: number;
   /** win, loss, or neutral */
   verdict: string;
+  /** Letter grade A+ through F for this team's side of the trade */
+  grade: string;
+  /** Numeric score 0-100 for this team's side of the trade */
+  score: number;
+  /** Short explanation of the grade */
+  gradeRationale: string;
 }
