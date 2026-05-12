@@ -5,6 +5,7 @@
  * ESPN Fantasy Football Trade Simulator API
  * OpenAPI spec version: 0.1.0
  */
+import type { TradeParticipant } from "./tradeParticipant";
 import type { TradeSimulationResult } from "./tradeSimulationResult";
 
 export interface SaveTradeBody {
@@ -12,4 +13,5 @@ export interface SaveTradeBody {
   leagueId: string;
   name: string;
   result: TradeSimulationResult;
+  participants: TradeParticipant[];
 }

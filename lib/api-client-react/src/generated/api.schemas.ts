@@ -109,6 +109,7 @@ export interface SaveTradeBody {
   leagueId: string;
   name: string;
   result: TradeSimulationResult;
+  participants: TradeParticipant[];
 }
 
 export interface SavedTrade {
@@ -117,6 +118,9 @@ export interface SavedTrade {
   leagueId: string;
   name: string;
   result: TradeSimulationResult;
+  participants: TradeParticipant[];
+  /** ISO timestamp of when scores were last recalculated from live ESPN data */
+  lastRefreshedAt: string;
   createdAt: string;
 }
 
@@ -130,5 +134,9 @@ export type GetLeagueTeamsParams = {
 };
 
 export type GetSavedTradesParams = {
+  sessionId: string;
+};
+
+export type RefreshSavedTradeParams = {
   sessionId: string;
 };

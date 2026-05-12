@@ -15,6 +15,7 @@ export * from "./getSavedTradesParams";
 export * from "./healthStatus";
 export * from "./league";
 export * from "./player";
+export * from "./refreshSavedTradeParams";
 export * from "./savedTrade";
 export * from "./saveTradeBody";
 export * from "./simulateTradeBody";

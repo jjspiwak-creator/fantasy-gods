@@ -8,6 +8,8 @@ export const savedTradesTable = pgTable("saved_trades", {
   leagueId: text("league_id").notNull(),
   name: text("name").notNull(),
   result: jsonb("result").notNull(),
+  participants: jsonb("participants").notNull().default([]),
+  lastRefreshedAt: timestamp("last_refreshed_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

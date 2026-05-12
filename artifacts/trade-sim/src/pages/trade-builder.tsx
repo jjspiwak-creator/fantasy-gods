@@ -23,6 +23,7 @@ export function TradeBuilderPage() {
   // Record<teamId, array of playerId>
   const [givingPlayers, setGivingPlayers] = useState<Record<string, string[]>>({});
   const [simulationResult, setSimulationResult] = useState<TradeSimulationResult | null>(null);
+  const [lastParticipants, setLastParticipants] = useState<Array<{ teamId: string; givingPlayerIds: string[] }>>([]);
 
   const handleTeamToggle = (teamId: string) => {
     setSelectedTeamIds(prev => 
@@ -48,6 +49,7 @@ export function TradeBuilderPage() {
       givingPlayerIds: givingPlayers[teamId] || []
     }));
 
+    setLastParticipants(participants);
     simulateMutation.mutate(
       { sessionId, leagueId, participants, teams },
       { onSuccess: (res) => {
@@ -61,7 +63,7 @@ export function TradeBuilderPage() {
     if (!sessionId || !leagueId || !simulationResult) return;
     const names = simulationResult.teamResults.map(t => t.teamName).join(' & ');
     saveMutation.mutate(
-      { sessionId, leagueId, name: `Trade: ${names}`, result: simulationResult },
+      { sessionId, leagueId, name: `Trade: ${names}`, result: simulationResult, participants: lastParticipants },
       { onSuccess: () => setLocation('/saved-trades') }
     );
   };

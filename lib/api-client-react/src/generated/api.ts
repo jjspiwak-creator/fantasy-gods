@@ -25,6 +25,7 @@ import type {
   GetSavedTradesParams,
   HealthStatus,
   League,
+  RefreshSavedTradeParams,
   SaveTradeBody,
   SavedTrade,
   SimulateTradeBody,
@@ -679,6 +680,106 @@ export const useSaveTrade = <
   TContext
 > => {
   return useMutation(getSaveTradeMutationOptions(options));
+};
+
+/**
+ * @summary Refresh trade scores using current ESPN player values
+ */
+export const getRefreshSavedTradeUrl = (
+  tradeId: number,
+  params: RefreshSavedTradeParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/trades/saved/${tradeId}/refresh?${stringifiedParams}`
+    : `/api/trades/saved/${tradeId}/refresh`;
+};
+
+export const refreshSavedTrade = async (
+  tradeId: number,
+  params: RefreshSavedTradeParams,
+  options?: RequestInit,
+): Promise<SavedTrade> => {
+  return customFetch<SavedTrade>(getRefreshSavedTradeUrl(tradeId, params), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRefreshSavedTradeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refreshSavedTrade>>,
+    TError,
+    { tradeId: number; params: RefreshSavedTradeParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof refreshSavedTrade>>,
+  TError,
+  { tradeId: number; params: RefreshSavedTradeParams },
+  TContext
+> => {
+  const mutationKey = ["refreshSavedTrade"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof refreshSavedTrade>>,
+    { tradeId: number; params: RefreshSavedTradeParams }
+  > = (props) => {
+    const { tradeId, params } = props ?? {};
+
+    return refreshSavedTrade(tradeId, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RefreshSavedTradeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof refreshSavedTrade>>
+>;
+
+export type RefreshSavedTradeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Refresh trade scores using current ESPN player values
+ */
+export const useRefreshSavedTrade = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refreshSavedTrade>>,
+    TError,
+    { tradeId: number; params: RefreshSavedTradeParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof refreshSavedTrade>>,
+  TError,
+  { tradeId: number; params: RefreshSavedTradeParams },
+  TContext
+> => {
+  return useMutation(getRefreshSavedTradeMutationOptions(options));
 };
 
 /**

@@ -7,6 +7,7 @@ import {
   getSavedTrades,
   saveTrade,
   deleteSavedTrade,
+  refreshSavedTrade,
   type EspnConnectBody,
   type SimulateTradeBody,
   type SaveTradeBody
@@ -100,6 +101,31 @@ export function useSaveTradeMutation() {
       toast({
         title: "Save Failed",
         description: "Could not save trade.",
+        variant: "destructive",
+      });
+    }
+  });
+}
+
+export function useRefreshTradeMutation() {
+  const queryClient = useQueryClient();
+  const sessionId = useSession(s => s.sessionId);
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (tradeId: number) =>
+      refreshSavedTrade(tradeId, { sessionId: sessionId! }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['savedTrades', sessionId] });
+      toast({
+        title: "Scores Updated",
+        description: "Trade grades recalculated with current player values.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Refresh Failed",
+        description: "Could not fetch current player data from ESPN.",
         variant: "destructive",
       });
     }

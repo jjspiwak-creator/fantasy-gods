@@ -198,6 +198,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /trades/saved/{tradeId}/refresh:
+    post:
+      operationId: refreshSavedTrade
+      tags: [trades]
+      summary: Refresh trade scores using current ESPN player values
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated saved trade with fresh scores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedTrade"
+        "401":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: ESPN fetch failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /trades/saved/{tradeId}:
     delete:
       operationId: deleteSavedTrade
@@ -480,11 +522,16 @@ components:
           type: string
         result:
           $ref: "#/components/schemas/TradeSimulationResult"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradeParticipant"
       required:
         - sessionId
         - leagueId
         - name
         - result
+        - participants
 
     SavedTrade:
       type: object
@@ -499,6 +546,13 @@ components:
           type: string
         result:
           $ref: "#/components/schemas/TradeSimulationResult"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradeParticipant"
+        lastRefreshedAt:
+          type: string
+          description: ISO timestamp of when scores were last recalculated from live ESPN data
         createdAt:
           type: string
       required:
@@ -507,4 +561,6 @@ components:
         - leagueId
         - name
         - result
+        - participants
+        - lastRefreshedAt
         - createdAt

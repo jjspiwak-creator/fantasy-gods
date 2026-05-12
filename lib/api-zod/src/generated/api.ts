@@ -306,6 +306,17 @@ export const GetSavedTradesResponseItem = zod.object({
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
   }),
+  participants: zod.array(
+    zod.object({
+      teamId: zod.string(),
+      givingPlayerIds: zod.array(zod.string()),
+    }),
+  ),
+  lastRefreshedAt: zod
+    .string()
+    .describe(
+      "ISO timestamp of when scores were last recalculated from live ESPN data",
+    ),
   createdAt: zod.string(),
 });
 export const GetSavedTradesResponse = zod.array(GetSavedTradesResponseItem);
@@ -397,6 +408,121 @@ export const SaveTradeBody = zod.object({
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
   }),
+  participants: zod.array(
+    zod.object({
+      teamId: zod.string(),
+      givingPlayerIds: zod.array(zod.string()),
+    }),
+  ),
+});
+
+/**
+ * @summary Refresh trade scores using current ESPN player values
+ */
+export const RefreshSavedTradeParams = zod.object({
+  tradeId: zod.coerce.number(),
+});
+
+export const RefreshSavedTradeQueryParams = zod.object({
+  sessionId: zod.coerce.string(),
+});
+
+export const RefreshSavedTradeResponse = zod.object({
+  id: zod.number(),
+  sessionId: zod.string(),
+  leagueId: zod.string(),
+  name: zod.string(),
+  result: zod.object({
+    leagueId: zod.string(),
+    teamResults: zod.array(
+      zod.object({
+        teamId: zod.string(),
+        teamName: zod.string(),
+        ownerName: zod.string(),
+        playersGiven: zod.array(
+          zod.object({
+            id: zod.string(),
+            name: zod.string(),
+            position: zod.string(),
+            nflTeam: zod.string(),
+            points: zod.number(),
+            projectedPoints: zod.number(),
+            tradeValue: zod.number(),
+            isStarter: zod.boolean(),
+            injuryStatus: zod.string().nullish(),
+          }),
+        ),
+        playersReceived: zod.array(
+          zod.object({
+            id: zod.string(),
+            name: zod.string(),
+            position: zod.string(),
+            nflTeam: zod.string(),
+            points: zod.number(),
+            projectedPoints: zod.number(),
+            tradeValue: zod.number(),
+            isStarter: zod.boolean(),
+            injuryStatus: zod.string().nullish(),
+          }),
+        ),
+        rosterBefore: zod.array(
+          zod.object({
+            id: zod.string(),
+            name: zod.string(),
+            position: zod.string(),
+            nflTeam: zod.string(),
+            points: zod.number(),
+            projectedPoints: zod.number(),
+            tradeValue: zod.number(),
+            isStarter: zod.boolean(),
+            injuryStatus: zod.string().nullish(),
+          }),
+        ),
+        rosterAfter: zod.array(
+          zod.object({
+            id: zod.string(),
+            name: zod.string(),
+            position: zod.string(),
+            nflTeam: zod.string(),
+            points: zod.number(),
+            projectedPoints: zod.number(),
+            tradeValue: zod.number(),
+            isStarter: zod.boolean(),
+            injuryStatus: zod.string().nullish(),
+          }),
+        ),
+        tradeValueBefore: zod.number(),
+        tradeValueAfter: zod.number(),
+        tradeValueChange: zod.number(),
+        verdict: zod.string().describe("win, loss, or neutral"),
+        grade: zod
+          .string()
+          .describe(
+            "Letter grade A+ through F for this team's side of the trade",
+          ),
+        score: zod
+          .number()
+          .describe("Numeric score 0-100 for this team's side of the trade"),
+        gradeRationale: zod.string().describe("Short explanation of the grade"),
+      }),
+    ),
+    overallBalance: zod
+      .number()
+      .describe("Sum of all value changes (should be ~0 for fair trades)"),
+    summary: zod.string(),
+  }),
+  participants: zod.array(
+    zod.object({
+      teamId: zod.string(),
+      givingPlayerIds: zod.array(zod.string()),
+    }),
+  ),
+  lastRefreshedAt: zod
+    .string()
+    .describe(
+      "ISO timestamp of when scores were last recalculated from live ESPN data",
+    ),
+  createdAt: zod.string(),
 });
 
 /**
