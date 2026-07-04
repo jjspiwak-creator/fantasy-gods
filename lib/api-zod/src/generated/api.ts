@@ -89,22 +89,32 @@ export const GetLeagueTeamsResponseItem = zod.object({
 export const GetLeagueTeamsResponse = zod.array(GetLeagueTeamsResponseItem);
 
 /**
- * Simulate a trade involving 2 or more teams and calculate before/after rosters and scores
+ * Simulate a trade involving 2 or more teams using an explicit origin-to-destination matrix. Each transfer specifies exactly which player moves from which team to which team, allowing any topology (A→B, A→C, B→A, etc.) rather than a fixed circular chain.
+
  * @summary Simulate a multi-team trade
  */
-export const simulateTradeBodyParticipantsMin = 2;
 
 export const SimulateTradeBody = zod.object({
   sessionId: zod.string(),
   leagueId: zod.string(),
-  participants: zod
+  transfers: zod
     .array(
-      zod.object({
-        teamId: zod.string(),
-        givingPlayerIds: zod.array(zod.string()),
-      }),
+      zod
+        .object({
+          playerId: zod
+            .string()
+            .describe("The ID of the player being transferred"),
+          fromTeamId: zod.string().describe("The team giving this player up"),
+          toTeamId: zod.string().describe("The team receiving this player"),
+        })
+        .describe(
+          "A single player movement from one team to another. Using an explicit origin\/destination pair instead of a circular chain lets any team send any player to any other participating team in the same trade.\n",
+        ),
     )
-    .min(simulateTradeBodyParticipantsMin),
+    .min(1)
+    .describe(
+      "Explicit origin-to-destination matrix. Each entry is one player movement. Participating teams are derived from the union of all fromTeamId\/toTeamId values.\n",
+    ),
   teams: zod.array(
     zod.object({
       id: zod.string(),
@@ -306,12 +316,21 @@ export const GetSavedTradesResponseItem = zod.object({
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
   }),
-  participants: zod.array(
-    zod.object({
-      teamId: zod.string(),
-      givingPlayerIds: zod.array(zod.string()),
-    }),
-  ),
+  transfers: zod
+    .array(
+      zod
+        .object({
+          playerId: zod
+            .string()
+            .describe("The ID of the player being transferred"),
+          fromTeamId: zod.string().describe("The team giving this player up"),
+          toTeamId: zod.string().describe("The team receiving this player"),
+        })
+        .describe(
+          "A single player movement from one team to another. Using an explicit origin\/destination pair instead of a circular chain lets any team send any player to any other participating team in the same trade.\n",
+        ),
+    )
+    .describe("The original transfer matrix, used to re-simulate on refresh"),
   lastRefreshedAt: zod
     .string()
     .describe(
@@ -408,12 +427,23 @@ export const SaveTradeBody = zod.object({
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
   }),
-  participants: zod.array(
-    zod.object({
-      teamId: zod.string(),
-      givingPlayerIds: zod.array(zod.string()),
-    }),
-  ),
+  transfers: zod
+    .array(
+      zod
+        .object({
+          playerId: zod
+            .string()
+            .describe("The ID of the player being transferred"),
+          fromTeamId: zod.string().describe("The team giving this player up"),
+          toTeamId: zod.string().describe("The team receiving this player"),
+        })
+        .describe(
+          "A single player movement from one team to another. Using an explicit origin\/destination pair instead of a circular chain lets any team send any player to any other participating team in the same trade.\n",
+        ),
+    )
+    .describe(
+      "The transfer matrix used to generate this result, stored for future refresh",
+    ),
 });
 
 /**
@@ -511,12 +541,21 @@ export const RefreshSavedTradeResponse = zod.object({
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
   }),
-  participants: zod.array(
-    zod.object({
-      teamId: zod.string(),
-      givingPlayerIds: zod.array(zod.string()),
-    }),
-  ),
+  transfers: zod
+    .array(
+      zod
+        .object({
+          playerId: zod
+            .string()
+            .describe("The ID of the player being transferred"),
+          fromTeamId: zod.string().describe("The team giving this player up"),
+          toTeamId: zod.string().describe("The team receiving this player"),
+        })
+        .describe(
+          "A single player movement from one team to another. Using an explicit origin\/destination pair instead of a circular chain lets any team send any player to any other participating team in the same trade.\n",
+        ),
+    )
+    .describe("The original transfer matrix, used to re-simulate on refresh"),
   lastRefreshedAt: zod
     .string()
     .describe(

@@ -5,13 +5,17 @@
  * ESPN Fantasy Football Trade Simulator API
  * OpenAPI spec version: 0.1.0
  */
+import type { PlayerTransfer } from "./playerTransfer";
 import type { Team } from "./team";
-import type { TradeParticipant } from "./tradeParticipant";
 
 export interface SimulateTradeBody {
   sessionId: string;
   leagueId: string;
-  /** @minItems 2 */
-  participants: TradeParticipant[];
+  /**
+   * Explicit origin-to-destination matrix. Each entry is one player movement. Participating teams are derived from the union of all fromTeamId/toTeamId values.
+
+   * @minItems 1
+   */
+  transfers: PlayerTransfer[];
   teams: Team[];
 }

@@ -26,7 +26,7 @@ import {
   type Player,
   type TeamTradeResult,
   type TradeSimulationResult,
-  type TradeParticipant,
+  type PlayerTransfer,
 } from "@workspace/api-client-react";
 import { formatTradeValue, getGradeColor, getGradeBgColor, getGradeBorderColor } from "@/lib/utils";
 
@@ -53,9 +53,11 @@ export default function TradeBuilderScreen() {
 
   const [step, setStep] = useState<Step>(1);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
-  const [givingPlayers, setGivingPlayers] = useState<Record<string, string[]>>({});
+
+  /** Origin-to-destination matrix: each entry is one explicit player movement */
+  const [transfers, setTransfers] = useState<PlayerTransfer[]>([]);
   const [simulationResult, setSimulationResult] = useState<TradeSimulationResult | null>(null);
-  const [lastParticipants, setLastParticipants] = useState<TradeParticipant[]>([]);
+  const [lastTransfers, setLastTransfers] = useState<PlayerTransfer[]>([]);
 
   const styles = makeStyles(colors);
 
@@ -66,27 +68,35 @@ export default function TradeBuilderScreen() {
     );
   };
 
-  const togglePlayer = (teamId: string, playerId: string) => {
+  /** Toggle a player in/out of the transfer matrix.
+   *  Default destination: next team in the selected list (convenient default,
+   *  can be changed by tapping a destination chip). */
+  const togglePlayer = (playerId: string, fromTeamId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setGivingPlayers((prev) => {
-      const existing = prev[teamId] ?? [];
-      const updated = existing.includes(playerId)
-        ? existing.filter((id) => id !== playerId)
-        : [...existing, playerId];
-      return { ...prev, [teamId]: updated };
+    setTransfers((prev) => {
+      if (prev.some((t) => t.playerId === playerId)) {
+        return prev.filter((t) => t.playerId !== playerId);
+      }
+      const fromIdx = selectedTeamIds.indexOf(fromTeamId);
+      const toTeamId = selectedTeamIds[(fromIdx + 1) % selectedTeamIds.length];
+      return [...prev, { playerId, fromTeamId, toTeamId }];
     });
+  };
+
+  /** Change the destination of an already-selected player */
+  const changeDestination = (playerId: string, toTeamId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTransfers((prev) =>
+      prev.map((t) => (t.playerId === playerId ? { ...t, toTeamId } : t))
+    );
   };
 
   const handleSimulate = () => {
     if (!sessionId || !leagueId || !teams) return;
-    const participants: TradeParticipant[] = selectedTeamIds.map((teamId) => ({
-      teamId,
-      givingPlayerIds: givingPlayers[teamId] ?? [],
-    }));
-    setLastParticipants(participants);
+    setLastTransfers(transfers);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     simulateMutation.mutate(
-      { data: { sessionId, leagueId, participants, teams } },
+      { data: { sessionId, leagueId, transfers, teams } },
       {
         onSuccess: (result) => {
           setSimulationResult(result);
@@ -111,7 +121,7 @@ export default function TradeBuilderScreen() {
           leagueId,
           name: `Trade: ${names}`,
           result: simulationResult,
-          participants: lastParticipants,
+          transfers: lastTransfers,
         },
       },
       {
@@ -125,7 +135,7 @@ export default function TradeBuilderScreen() {
   };
 
   const selectedTeamsData = teams?.filter((t) => selectedTeamIds.includes(t.id)) ?? [];
-  const hasPlayersSelected = Object.values(givingPlayers).some((arr) => arr.length > 0);
+  const hasTransfers = transfers.length > 0;
 
   if (isLoading) {
     return (
@@ -169,13 +179,13 @@ export default function TradeBuilderScreen() {
               />
             ))}
             <Text style={styles.stepLabel}>
-              {step === 1 ? "Select Teams" : step === 2 ? "Pick Players" : "Results"}
+              {step === 1 ? "Select Teams" : step === 2 ? "Assign Players" : "Results"}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* STEP 1: Select Teams */}
+      {/* ── STEP 1: Select Teams ── */}
       {step === 1 && (
         <View style={{ flex: 1 }}>
           <View style={styles.stepBanner}>
@@ -224,17 +234,17 @@ export default function TradeBuilderScreen() {
         </View>
       )}
 
-      {/* STEP 2: Pick Players */}
+      {/* ── STEP 2: Assign Players with Destinations ── */}
       {step === 2 && (
         <View style={{ flex: 1 }}>
           <View style={styles.stepBanner}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.stepBannerTitle}>Select Players to Trade</Text>
-              <Text style={styles.stepBannerDesc}>Each team gives → next team (circular)</Text>
+              <Text style={styles.stepBannerTitle}>Assign Players to Destinations</Text>
+              <Text style={styles.stepBannerDesc}>Tap a player, then choose where they go</Text>
             </View>
             <TouchableOpacity
-              style={[styles.nextBtn, (!hasPlayersSelected || simulateMutation.isPending) && styles.nextBtnDisabled]}
-              disabled={!hasPlayersSelected || simulateMutation.isPending}
+              style={[styles.nextBtn, (!hasTransfers || simulateMutation.isPending) && styles.nextBtnDisabled]}
+              disabled={!hasTransfers || simulateMutation.isPending}
               onPress={handleSimulate}
               activeOpacity={0.8}
             >
@@ -253,42 +263,67 @@ export default function TradeBuilderScreen() {
             contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
             showsVerticalScrollIndicator={false}
           >
-            {selectedTeamsData.map((team, idx) => {
-              const receiver = selectedTeamsData[(idx + 1) % selectedTeamsData.length];
-              const givingIds = givingPlayers[team.id] ?? [];
+            {selectedTeamsData.map((team) => {
+              const otherTeams = selectedTeamsData.filter((t) => t.id !== team.id);
               return (
                 <View key={team.id} style={styles.rosterCard}>
                   <View style={styles.rosterCardHeader}>
                     <Text style={styles.rosterTeamName}>{team.name}</Text>
-                    <View style={styles.rosterArrow}>
-                      <Feather name="arrow-right" size={12} color={colors.primary} />
-                      <Text style={styles.rosterArrowText}>{receiver.name}</Text>
-                    </View>
+                    <Text style={styles.rosterCardSub}>Tap player → pick destination</Text>
                   </View>
                   {team.roster.map((player: Player) => {
-                    const selected = givingIds.includes(player.id);
+                    const transfer = transfers.find((t) => t.playerId === player.id);
+                    const isSelected = !!transfer;
                     return (
-                      <TouchableOpacity
-                        key={player.id}
-                        style={[styles.playerRow, selected && styles.playerRowSelected]}
-                        onPress={() => togglePlayer(team.id, player.id)}
-                        activeOpacity={0.75}
-                      >
-                        <View style={styles.playerPos}>
-                          <Text style={styles.playerPosText}>{player.position}</Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.playerName}>{player.name}</Text>
-                          <Text style={styles.playerMeta}>
-                            {player.nflTeam} · {player.points.toFixed(0)} pts
-                            {player.injuryStatus ? ` · ⚠ ${player.injuryStatus}` : ""}
-                          </Text>
-                        </View>
-                        <Text style={styles.playerValue}>{player.tradeValue.toFixed(0)}</Text>
-                        {selected && (
-                          <Feather name="check-circle" size={18} color={colors.primary} style={{ marginLeft: 6 }} />
+                      <View key={player.id}>
+                        <TouchableOpacity
+                          style={[styles.playerRow, isSelected && styles.playerRowSelected]}
+                          onPress={() => togglePlayer(player.id, team.id)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={styles.playerPos}>
+                            <Text style={styles.playerPosText}>{player.position}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.playerName}>{player.name}</Text>
+                            <Text style={styles.playerMeta}>
+                              {player.nflTeam} · {player.points.toFixed(0)} pts
+                              {player.injuryStatus ? ` · ⚠ ${player.injuryStatus}` : ""}
+                            </Text>
+                          </View>
+                          <Text style={styles.playerValue}>{player.tradeValue.toFixed(0)}</Text>
+                          {isSelected && (
+                            <Feather name="check-circle" size={18} color={colors.primary} style={{ marginLeft: 6 }} />
+                          )}
+                        </TouchableOpacity>
+
+                        {/* Destination picker: shown only when player is selected */}
+                        {isSelected && otherTeams.length > 0 && (
+                          <View style={styles.destRow}>
+                            <Feather name="arrow-right" size={12} color={colors.primary} />
+                            <Text style={styles.destLabel}>Send to</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+                              <View style={{ flexDirection: "row", gap: 6 }}>
+                                {otherTeams.map((destTeam) => {
+                                  const isActive = transfer?.toTeamId === destTeam.id;
+                                  return (
+                                    <TouchableOpacity
+                                      key={destTeam.id}
+                                      style={[styles.destChip, isActive && styles.destChipActive]}
+                                      onPress={() => changeDestination(player.id, destTeam.id)}
+                                      activeOpacity={0.75}
+                                    >
+                                      <Text style={[styles.destChipText, isActive && styles.destChipTextActive]} numberOfLines={1}>
+                                        {destTeam.name}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </ScrollView>
+                          </View>
                         )}
-                      </TouchableOpacity>
+                      </View>
                     );
                   })}
                 </View>
@@ -298,7 +333,7 @@ export default function TradeBuilderScreen() {
         </View>
       )}
 
-      {/* STEP 3: Results */}
+      {/* ── STEP 3: Results ── */}
       {step === 3 && simulationResult && (
         <View style={{ flex: 1 }}>
           <View style={styles.stepBanner}>
@@ -306,9 +341,7 @@ export default function TradeBuilderScreen() {
               <Text style={styles.stepBannerTitle}>Simulation Complete</Text>
               <Text style={[
                 styles.stepBannerDesc,
-                {
-                  color: simulationResult.overallBalance >= 0 ? colors.success : colors.destructive
-                }
+                { color: simulationResult.overallBalance >= 0 ? colors.success : colors.destructive }
               ]}>
                 Balance: {formatTradeValue(simulationResult.overallBalance)} pts
               </Text>
@@ -358,7 +391,6 @@ function ResultCard({
 
   return (
     <View style={styles.resultCard}>
-      {/* Team header + grade */}
       <View style={styles.resultHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.resultTeamName}>{result.teamName}</Text>
@@ -370,12 +402,10 @@ function ResultCard({
         </View>
       </View>
 
-      {/* Rationale */}
       <View style={styles.rationaleRow}>
         <Text style={[styles.rationaleText, { color: gradeColor }]}>{result.gradeRationale}</Text>
       </View>
 
-      {/* Value change */}
       <View style={styles.valueRow}>
         <Text style={styles.valueLabel}>Value Change</Text>
         <Text style={[
@@ -395,7 +425,6 @@ function ResultCard({
         </Text>
       </View>
 
-      {/* Players given / received */}
       <View style={styles.playerSplit}>
         <View style={styles.playerSplitCol}>
           <Text style={[styles.playerSplitLabel, { color: colors.destructive }]}>↑ Giving</Text>
@@ -535,8 +564,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       borderBottomColor: colors.border,
     },
     rosterTeamName: { fontSize: 14, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    rosterArrow: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primary + "15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-    rosterArrowText: { fontSize: 11, color: colors.primary, fontFamily: "Inter_500Medium" },
+    rosterCardSub: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     playerRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -559,6 +587,31 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     playerName: { fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     playerMeta: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     playerValue: { fontSize: 12, fontWeight: "700", color: colors.primary, fontFamily: "Inter_700Bold" },
+
+    /* Destination selector row */
+    destRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      backgroundColor: colors.primary + "08",
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border + "60",
+    },
+    destLabel: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_500Medium", flexShrink: 0 },
+    destChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+    },
+    destChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + "20" },
+    destChipText: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_500Medium" },
+    destChipTextActive: { color: colors.primary, fontFamily: "Inter_700Bold" },
+
     resultCard: {
       backgroundColor: colors.card,
       borderRadius: colors.radius,
@@ -585,16 +638,16 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       paddingVertical: 5,
       marginLeft: 12,
     },
-    gradeText: { fontSize: 26, fontWeight: "900", fontFamily: "Inter_700Bold", lineHeight: 30 },
-    scoreText: { fontSize: 10, fontWeight: "700", fontFamily: "Inter_700Bold" },
+    gradeText: { fontSize: 28, fontWeight: "900" },
+    scoreText: { fontSize: 11, fontWeight: "700" },
     rationaleRow: {
       paddingHorizontal: 14,
       paddingVertical: 8,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border + "50",
+      borderBottomColor: colors.border + "40",
       backgroundColor: colors.background + "30",
     },
-    rationaleText: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" },
+    rationaleText: { fontSize: 12, fontFamily: "Inter_500Medium" },
     valueRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -602,27 +655,26 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       paddingHorizontal: 14,
       paddingVertical: 10,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border + "50",
+      borderBottomColor: colors.border + "40",
     },
     valueLabel: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5 },
     valueAmount: { fontSize: 18, fontWeight: "700", fontFamily: "Inter_700Bold" },
-    valueMeta: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginLeft: "auto" as any },
-    playerSplit: { flexDirection: "row", padding: 12, gap: 0 },
-    playerSplitCol: { flex: 1, gap: 6 },
-    playerSplitDivider: { width: 1, marginHorizontal: 10 },
-    playerSplitLabel: { fontSize: 11, fontWeight: "700", fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+    valueMeta: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginLeft: "auto" },
+    playerSplit: { flexDirection: "row" },
+    playerSplitCol: { flex: 1, padding: 12, gap: 6 },
+    playerSplitDivider: { width: 1 },
+    playerSplitLabel: { fontSize: 11, fontWeight: "700", fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
     playerMiniCard: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 5,
-      borderWidth: 1,
+      gap: 6,
+      padding: 6,
       borderRadius: 6,
-      paddingHorizontal: 7,
-      paddingVertical: 5,
+      borderWidth: 1,
     },
-    playerMiniPos: { fontSize: 9, fontWeight: "700", color: colors.mutedForeground, fontFamily: "Inter_700Bold", width: 20 },
+    playerMiniPos: { fontSize: 9, fontWeight: "700", color: colors.mutedForeground, fontFamily: "Inter_700Bold", width: 22, textAlign: "center" },
     playerMiniName: { flex: 1, fontSize: 11, color: colors.foreground, fontFamily: "Inter_500Medium" },
-    playerMiniVal: { fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    noneText: { fontSize: 12, color: colors.mutedForeground, fontStyle: "italic", fontFamily: "Inter_400Regular" },
+    playerMiniVal: { fontSize: 11, fontWeight: "700", color: colors.primary, fontFamily: "Inter_700Bold" },
+    noneText: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontStyle: "italic" },
   });
 }

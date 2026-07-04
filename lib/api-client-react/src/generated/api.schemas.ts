@@ -62,16 +62,28 @@ export interface Team {
   roster: Player[];
 }
 
-export interface TradeParticipant {
-  teamId: string;
-  givingPlayerIds: string[];
+/**
+ * A single player movement from one team to another. Using an explicit origin/destination pair instead of a circular chain lets any team send any player to any other participating team in the same trade.
+
+ */
+export interface PlayerTransfer {
+  /** The ID of the player being transferred */
+  playerId: string;
+  /** The team giving this player up */
+  fromTeamId: string;
+  /** The team receiving this player */
+  toTeamId: string;
 }
 
 export interface SimulateTradeBody {
   sessionId: string;
   leagueId: string;
-  /** @minItems 2 */
-  participants: TradeParticipant[];
+  /**
+   * Explicit origin-to-destination matrix. Each entry is one player movement. Participating teams are derived from the union of all fromTeamId/toTeamId values.
+
+   * @minItems 1
+   */
+  transfers: PlayerTransfer[];
   teams: Team[];
 }
 
@@ -109,7 +121,8 @@ export interface SaveTradeBody {
   leagueId: string;
   name: string;
   result: TradeSimulationResult;
-  participants: TradeParticipant[];
+  /** The transfer matrix used to generate this result, stored for future refresh */
+  transfers: PlayerTransfer[];
 }
 
 export interface SavedTrade {
@@ -118,7 +131,8 @@ export interface SavedTrade {
   leagueId: string;
   name: string;
   result: TradeSimulationResult;
-  participants: TradeParticipant[];
+  /** The original transfer matrix, used to re-simulate on refresh */
+  transfers: PlayerTransfer[];
   /** ISO timestamp of when scores were last recalculated from live ESPN data */
   lastRefreshedAt: string;
   createdAt: string;

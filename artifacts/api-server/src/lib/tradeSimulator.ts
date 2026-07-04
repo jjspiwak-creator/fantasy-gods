@@ -1,8 +1,9 @@
 import { EspnPlayer, EspnTeam } from "./espn";
 
-export interface TradeParticipant {
-  teamId: string;
-  givingPlayerIds: string[];
+export interface PlayerTransfer {
+  playerId: string;
+  fromTeamId: string;
+  toTeamId: string;
 }
 
 export interface TeamTradeResult {
@@ -35,46 +36,33 @@ function calculateGrade(
   tradeValueChange: number,
   rosterValueBefore: number
 ): { grade: string; score: number; gradeRationale: string } {
-  // Calculate ratio of received vs given value
-  let ratio: number;
-  let rationale: string;
-
   if (valueGiven === 0 && valueReceived === 0) {
-    // Nothing traded — neutral
     return { grade: "C", score: 70, gradeRationale: "No players exchanged on this side." };
   }
 
   if (valueGiven === 0) {
-    // Getting players for free
     return { grade: "A+", score: 100, gradeRationale: "Receiving value without giving anything up." };
   }
 
   if (valueReceived === 0) {
-    // Giving players away for nothing
     return { grade: "F", score: 20, gradeRationale: "Giving up value without receiving anything in return." };
   }
 
-  ratio = valueReceived / valueGiven;
-
-  // Also factor in the impact relative to roster size (a 10pt swing on a 200pt roster matters more than on a 500pt roster)
+  const ratio = valueReceived / valueGiven;
   const rosterImpactPct = rosterValueBefore > 0 ? Math.abs(tradeValueChange) / rosterValueBefore : 0;
 
-  // Base score from ratio (0-100 scale)
-  // ratio=1.0 → 75 (solid B), ratio=1.2 → 90 (A-), ratio=0.8 → 60 (D+)
   let score = Math.round(50 + ratio * 25);
   score = Math.max(0, Math.min(100, score));
 
-  // Bonus points for significant positive roster improvement
   if (tradeValueChange > 0 && rosterImpactPct > 0.05) {
     score = Math.min(100, score + Math.round(rosterImpactPct * 40));
   }
-  // Penalty for significant negative impact
   if (tradeValueChange < 0 && rosterImpactPct > 0.05) {
     score = Math.max(0, score - Math.round(rosterImpactPct * 40));
   }
 
-  // Build rationale
   const pct = Math.round((ratio - 1) * 100);
+  let rationale: string;
   if (ratio >= 1.05) {
     rationale = `Receiving ${pct}% more value than giving up.`;
   } else if (ratio >= 0.95) {
@@ -83,7 +71,6 @@ function calculateGrade(
     rationale = `Giving up ${Math.abs(pct)}% more value than receiving.`;
   }
 
-  // Map score to letter grade
   let grade: string;
   if (score >= 97) grade = "A+";
   else if (score >= 93) grade = "A";
@@ -102,55 +89,67 @@ function calculateGrade(
   return { grade, score, gradeRationale: rationale };
 }
 
+/**
+ * Simulate a multi-team trade using an explicit origin-to-destination matrix.
+ *
+ * Each `PlayerTransfer` specifies exactly one player movement: which player moves,
+ * which team it leaves, and which team it arrives at. This supports any trade
+ * topology — A↔B, A→B + B→C + C→A, A→B + C→B, etc. — without assuming a
+ * fixed circular chain.
+ *
+ * Participating teams are derived automatically from the union of all
+ * `fromTeamId` and `toTeamId` values in the transfer list.
+ */
 export function simulateTrade(
   leagueId: string,
-  participants: TradeParticipant[],
+  transfers: PlayerTransfer[],
   teams: EspnTeam[]
 ): TradeSimulationResult {
+  // Build team and player lookup maps
   const teamMap: Record<string, EspnTeam> = {};
+  const playerByTeam: Record<string, Record<string, EspnPlayer>> = {};
+
   for (const team of teams) {
     teamMap[team.id] = team;
+    playerByTeam[team.id] = {};
+    for (const player of team.roster) {
+      playerByTeam[team.id][player.id] = player;
+    }
   }
 
+  // Derive the full set of participating team IDs from the transfer matrix
+  const participatingTeamIds = new Set<string>();
+  for (const t of transfers) {
+    participatingTeamIds.add(t.fromTeamId);
+    participatingTeamIds.add(t.toTeamId);
+  }
+
+  // Initialize per-team given/received buckets
   const playersGivenByTeam: Record<string, EspnPlayer[]> = {};
   const playersReceivedByTeam: Record<string, EspnPlayer[]> = {};
-
-  for (const p of participants) {
-    playersGivenByTeam[p.teamId] = [];
-    playersReceivedByTeam[p.teamId] = [];
+  for (const teamId of participatingTeamIds) {
+    playersGivenByTeam[teamId] = [];
+    playersReceivedByTeam[teamId] = [];
   }
 
-  for (const participant of participants) {
-    const team = teamMap[participant.teamId];
-    if (!team) continue;
-
-    for (const playerId of participant.givingPlayerIds) {
-      const player = team.roster.find((p) => p.id === playerId);
-      if (player) {
-        playersGivenByTeam[participant.teamId].push(player);
-      }
-    }
+  // Resolve each transfer: look up the player on the giving team's original roster
+  for (const transfer of transfers) {
+    const player = playerByTeam[transfer.fromTeamId]?.[transfer.playerId];
+    if (!player) continue; // silently skip unresolvable players
+    playersGivenByTeam[transfer.fromTeamId].push(player);
+    playersReceivedByTeam[transfer.toTeamId].push(player);
   }
 
-  for (let i = 0; i < participants.length; i++) {
-    const givingTeamId = participants[i].teamId;
-    const receivingTeamId = participants[(i + 1) % participants.length].teamId;
-
-    const given = playersGivenByTeam[givingTeamId] || [];
-    for (const player of given) {
-      playersReceivedByTeam[receivingTeamId].push(player);
-    }
-  }
-
+  // Compute per-team results
   const teamResults: TeamTradeResult[] = [];
 
-  for (const participant of participants) {
-    const team = teamMap[participant.teamId];
+  for (const teamId of participatingTeamIds) {
+    const team = teamMap[teamId];
     if (!team) continue;
 
     const rosterBefore = [...team.roster];
-    const given = playersGivenByTeam[participant.teamId] || [];
-    const received = playersReceivedByTeam[participant.teamId] || [];
+    const given = playersGivenByTeam[teamId] ?? [];
+    const received = playersReceivedByTeam[teamId] ?? [];
     const givenIds = new Set(given.map((p) => p.id));
 
     const rosterAfter = [
@@ -177,7 +176,7 @@ export function simulateTrade(
     );
 
     teamResults.push({
-      teamId: participant.teamId,
+      teamId,
       teamName: team.name,
       ownerName: team.ownerName,
       playersGiven: given,
@@ -208,10 +207,5 @@ export function simulateTrade(
     summary = "Mixed results — check individual team breakdowns.";
   }
 
-  return {
-    leagueId,
-    teamResults,
-    overallBalance,
-    summary,
-  };
+  return { leagueId, teamResults, overallBalance, summary };
 }

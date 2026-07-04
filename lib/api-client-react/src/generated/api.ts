@@ -414,7 +414,8 @@ export function useGetLeagueTeams<
 }
 
 /**
- * Simulate a trade involving 2 or more teams and calculate before/after rosters and scores
+ * Simulate a trade involving 2 or more teams using an explicit origin-to-destination matrix. Each transfer specifies exactly which player moves from which team to which team, allowing any topology (A→B, A→C, B→A, etc.) rather than a fixed circular chain.
+
  * @summary Simulate a multi-team trade
  */
 export const getSimulateTradeUrl = () => {

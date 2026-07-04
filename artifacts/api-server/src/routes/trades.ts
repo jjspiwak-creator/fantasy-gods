@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-zod";
 import { db, savedTradesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { simulateTrade } from "../lib/tradeSimulator";
+import { simulateTrade, type PlayerTransfer } from "../lib/tradeSimulator";
 import { fetchLeagueTeams } from "../lib/espn";
 import { getSession } from "../lib/sessions";
 
@@ -32,27 +32,34 @@ router.post("/trades/simulate", async (req, res): Promise<void> => {
     return;
   }
 
-  const { leagueId, participants, teams } = parsed.data;
+  const { leagueId, transfers, teams } = parsed.data;
 
-  if (participants.length < 2) {
-    res.status(400).json({ error: "A trade must involve at least 2 teams." });
+  if (transfers.length < 1) {
+    res.status(400).json({ error: "A trade must include at least one player transfer." });
     return;
   }
 
-  const participatingTeamIds = new Set(participants.map((p) => p.teamId));
-  if (participatingTeamIds.size < participants.length) {
-    res.status(400).json({ error: "Duplicate teams in trade." });
+  // Derive the set of participating teams from the transfer matrix
+  const participatingTeamIds = new Set<string>();
+  for (const t of transfers) {
+    participatingTeamIds.add(t.fromTeamId);
+    participatingTeamIds.add(t.toTeamId);
+  }
+
+  if (participatingTeamIds.size < 2) {
+    res.status(400).json({ error: "A trade must involve at least 2 different teams." });
     return;
   }
 
-  const hasPlayers = participants.some((p) => p.givingPlayerIds.length > 0);
-  if (!hasPlayers) {
-    res.status(400).json({ error: "Each trade must involve at least one player." });
+  // Ensure no player is sent to the same team they came from
+  const selfTransfer = transfers.find((t) => t.fromTeamId === t.toTeamId);
+  if (selfTransfer) {
+    res.status(400).json({ error: "A player cannot be traded to their own team." });
     return;
   }
 
   try {
-    const result = simulateTrade(leagueId, participants, teams as any);
+    const result = simulateTrade(leagueId, transfers as PlayerTransfer[], teams as any);
     res.json(SimulateTradeResponse.parse(result));
   } catch (err) {
     req.log.error({ err }, "Trade simulation error");
@@ -91,7 +98,8 @@ router.post("/trades/saved", async (req, res): Promise<void> => {
       leagueId: parsed.data.leagueId,
       name: parsed.data.name,
       result: parsed.data.result as any,
-      participants: parsed.data.participants as any,
+      // Store the transfer matrix in the `participants` column (JSONB — column name is legacy)
+      participants: parsed.data.transfers as any,
       lastRefreshedAt: now,
     })
     .returning();
@@ -132,8 +140,9 @@ router.post("/trades/saved/:tradeId/refresh", async (req, res): Promise<void> =>
     const season = new Date().getFullYear();
     const teams = await fetchLeagueTeams(creds, trade.leagueId, season);
 
-    const participants = trade.participants as Array<{ teamId: string; givingPlayerIds: string[] }>;
-    const freshResult = simulateTrade(trade.leagueId, participants, teams);
+    // The participants column stores PlayerTransfer[] (explicit origin-to-destination matrix)
+    const transfers = trade.participants as PlayerTransfer[];
+    const freshResult = simulateTrade(trade.leagueId, transfers, teams);
 
     const now = new Date();
     const [updated] = await db
