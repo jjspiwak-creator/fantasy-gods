@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "L-nd26CXjlf-dQcybHI__"
+uri = "file://artifacts/trade-sim-mobile/assets/images/icon.png"
+type = "image"
+title = "generated_image"
