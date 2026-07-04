@@ -14,6 +14,11 @@ import {
 } from "@workspace/api-client-react";
 import { useSession } from "./use-session";
 import { useToast } from "./use-toast";
+import { useAuth } from "./use-auth";
+
+function authHeaders(token: string | null) {
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
 
 // Wrappers around the generated hooks to handle session injection and standard error handling
 
@@ -76,9 +81,10 @@ export function useSimulateTradeMutation() {
 
 export function useSavedTradesList() {
   const sessionId = useSession(s => s.sessionId);
+  const token = useAuth(s => s.token);
   return useQuery({
-    queryKey: ['savedTrades', sessionId],
-    queryFn: () => getSavedTrades({ sessionId: sessionId! }),
+    queryKey: ['savedTrades', sessionId, token],
+    queryFn: () => getSavedTrades({ sessionId: sessionId! }, { headers: authHeaders(token) }),
     enabled: !!sessionId,
   });
 }
@@ -87,9 +93,10 @@ export function useSaveTradeMutation() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const sessionId = useSession(s => s.sessionId);
+  const token = useAuth(s => s.token);
 
   return useMutation({
-    mutationFn: (data: SaveTradeBody) => saveTrade(data),
+    mutationFn: (data: SaveTradeBody) => saveTrade(data, { headers: authHeaders(token) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['savedTrades', sessionId] });
       toast({

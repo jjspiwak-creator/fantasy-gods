@@ -10,10 +10,11 @@ import {
   RefreshSavedTradeQueryParams,
 } from "@workspace/api-zod";
 import { db, savedTradesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { simulateTrade, type PlayerTransfer } from "../lib/tradeSimulator";
 import { fetchLeagueTeams } from "../lib/espn";
 import { getSession } from "../lib/sessions";
+import { extractToken, verifyToken } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -74,10 +75,20 @@ router.get("/trades/saved", async (req, res): Promise<void> => {
     return;
   }
 
+  // If a valid JWT is provided, also return trades saved under the user account.
+  const jwtPayload = verifyToken(extractToken(req.headers.authorization) ?? "");
+
   const trades = await db
     .select()
     .from(savedTradesTable)
-    .where(eq(savedTradesTable.sessionId, params.data.sessionId))
+    .where(
+      jwtPayload
+        ? or(
+            eq(savedTradesTable.sessionId, params.data.sessionId),
+            eq(savedTradesTable.userId, jwtPayload.userId)
+          )
+        : eq(savedTradesTable.sessionId, params.data.sessionId)
+    )
     .orderBy(savedTradesTable.createdAt);
 
   res.json(GetSavedTradesResponse.parse(trades.map(formatTrade)));
@@ -90,11 +101,13 @@ router.post("/trades/saved", async (req, res): Promise<void> => {
     return;
   }
 
+  const jwtPayload = verifyToken(extractToken(req.headers.authorization) ?? "");
   const now = new Date();
   const [saved] = await db
     .insert(savedTradesTable)
     .values({
       sessionId: parsed.data.sessionId,
+      userId: jwtPayload?.userId ?? null,
       leagueId: parsed.data.leagueId,
       name: parsed.data.name,
       result: parsed.data.result as any,

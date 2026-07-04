@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useLeagueTeams, useSimulateTradeMutation, useSaveTradeMutation } from "@/hooks/use-espn-api";
 import { useSession } from "@/hooks/use-session";
+import { useShowLeagueWarnings, useUpdateWarningsMutation } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerCard } from "@/components/player-card";
 import {
   GitCompareArrows, ArrowRight, Save, Trash2, CheckCircle2,
-  ChevronRight, Scale, AlertTriangle, X,
+  ChevronRight, Scale, AlertTriangle, X, BellOff,
 } from "lucide-react";
 import { cn, formatTradeValue, getGradeColor, getGradeBg } from "@/lib/utils";
 import type { TradeSimulationResult, TeamTradeResult, PlayerTransfer, Player } from "@workspace/api-client-react";
@@ -18,6 +19,8 @@ export function TradeBuilderPage() {
   const { data: teams, isLoading } = useLeagueTeams(leagueId || "");
   const simulateMutation = useSimulateTradeMutation();
   const saveMutation = useSaveTradeMutation();
+  const showLeagueWarnings = useShowLeagueWarnings();
+  const updateWarnings = useUpdateWarningsMutation();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
@@ -279,6 +282,31 @@ export function TradeBuilderPage() {
             />
           )}
 
+          {/* ── SOFT LEAGUE WARNING BANNER ── */}
+          {showLeagueWarnings && simulationResult.leagueWarnings.length > 0 && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 overflow-hidden">
+              <div className="flex items-start gap-3 px-5 py-4">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-amber-300 text-sm">League Rule Notice</p>
+                  <ul className="mt-1 space-y-1">
+                    {simulationResult.leagueWarnings.map((w, i) => (
+                      <li key={i} className="text-xs text-muted-foreground leading-relaxed">{w}</li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={() => updateWarnings.mutate(false)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors shrink-0 px-2 py-1 rounded-lg hover:bg-white/5"
+                  title="Hide league warning banners"
+                >
+                  <BellOff className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Hide</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Results grid */}
           <div className="grid xl:grid-cols-2 gap-8">
             {simulationResult.teamResults.map(result => (
@@ -381,7 +409,7 @@ function RosterOverflowSection({
                   {result.rosterAfter.map(player => {
                     const isDropped = picked.includes(player.id);
                     const isNewlyReceived = result.playersReceived.some(p => p.id === player.id);
-                    const isDisabled = !isDropped && picked.length >= excess;
+                    const isDisabled = isNewlyReceived || (!isDropped && picked.length >= excess);
 
                     return (
                       <div

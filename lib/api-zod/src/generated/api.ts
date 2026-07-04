@@ -239,6 +239,11 @@ export const SimulateTradeResponse = zod.object({
     .describe(
       "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
     ),
+  leagueWarnings: zod
+    .array(zod.string())
+    .describe(
+      "Human-readable descriptions of league rule violations produced by this trade (e.g. roster overflow, positional limits exceeded). Show a soft warning banner to the user when this array is non-empty.\n",
+    ),
 });
 
 /**
@@ -348,6 +353,11 @@ export const GetSavedTradesResponseItem = zod.object({
       .boolean()
       .describe(
         "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
+      ),
+    leagueWarnings: zod
+      .array(zod.string())
+      .describe(
+        "Human-readable descriptions of league rule violations produced by this trade (e.g. roster overflow, positional limits exceeded). Show a soft warning banner to the user when this array is non-empty.\n",
       ),
   }),
   transfers: zod
@@ -476,6 +486,11 @@ export const SaveTradeBody = zod.object({
       .boolean()
       .describe(
         "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
+      ),
+    leagueWarnings: zod
+      .array(zod.string())
+      .describe(
+        "Human-readable descriptions of league rule violations produced by this trade (e.g. roster overflow, positional limits exceeded). Show a soft warning banner to the user when this array is non-empty.\n",
       ),
   }),
   transfers: zod
@@ -608,6 +623,11 @@ export const RefreshSavedTradeResponse = zod.object({
       .describe(
         "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
       ),
+    leagueWarnings: zod
+      .array(zod.string())
+      .describe(
+        "Human-readable descriptions of league rule violations produced by this trade (e.g. roster overflow, positional limits exceeded). Show a soft warning banner to the user when this array is non-empty.\n",
+      ),
   }),
   transfers: zod
     .array(
@@ -638,3 +658,104 @@ export const RefreshSavedTradeResponse = zod.object({
 export const DeleteSavedTradeParams = zod.object({
   tradeId: zod.coerce.number(),
 });
+
+/**
+ * @summary Register a new user account
+ */
+export const registerUserBodyPasswordMin = 8;
+
+export const RegisterUserBody = zod.object({
+  email: zod.string().email(),
+  password: zod
+    .string()
+    .min(registerUserBodyPasswordMin)
+    .describe("Minimum 8 characters"),
+});
+
+export const RegisterUserResponse = zod.object({
+  token: zod
+    .string()
+    .describe(
+      "JWT bearer token — store locally and include in Authorization header",
+    ),
+  user: zod
+    .object({
+      id: zod.string().uuid(),
+      email: zod.string().email(),
+      showLeagueWarnings: zod
+        .boolean()
+        .describe(
+          "Whether to show the Soft Warning Sandbox banner on the results screen",
+        ),
+      createdAt: zod.string().describe("ISO timestamp"),
+    })
+    .describe("Logged-in user account details"),
+});
+
+/**
+ * @summary Sign in to an existing account
+ */
+export const LoginUserBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const LoginUserResponse = zod.object({
+  token: zod
+    .string()
+    .describe(
+      "JWT bearer token — store locally and include in Authorization header",
+    ),
+  user: zod
+    .object({
+      id: zod.string().uuid(),
+      email: zod.string().email(),
+      showLeagueWarnings: zod
+        .boolean()
+        .describe(
+          "Whether to show the Soft Warning Sandbox banner on the results screen",
+        ),
+      createdAt: zod.string().describe("ISO timestamp"),
+    })
+    .describe("Logged-in user account details"),
+});
+
+/**
+ * @summary Get the current logged-in user profile
+ */
+export const GetMeResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    email: zod.string().email(),
+    showLeagueWarnings: zod
+      .boolean()
+      .describe(
+        "Whether to show the Soft Warning Sandbox banner on the results screen",
+      ),
+    createdAt: zod.string().describe("ISO timestamp"),
+  })
+  .describe("Logged-in user account details");
+
+/**
+ * @summary Update user preferences (e.g. league warning visibility)
+ */
+export const UpdateUserSettingsBody = zod.object({
+  showLeagueWarnings: zod
+    .boolean()
+    .describe(
+      "Set to false to hide the Soft Warning Sandbox banner permanently",
+    ),
+});
+
+export const UpdateUserSettingsResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    email: zod.string().email(),
+    showLeagueWarnings: zod
+      .boolean()
+      .describe(
+        "Whether to show the Soft Warning Sandbox banner on the results screen",
+      ),
+    createdAt: zod.string().describe("ISO timestamp"),
+  })
+  .describe("Logged-in user account details");

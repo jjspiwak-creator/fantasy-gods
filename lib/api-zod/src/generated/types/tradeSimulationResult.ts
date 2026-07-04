@@ -16,4 +16,7 @@ export interface TradeSimulationResult {
   /** True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.
    */
   hasRosterOverflow: boolean;
+  /** Human-readable descriptions of league rule violations produced by this trade (e.g. roster overflow, positional limits exceeded). Show a soft warning banner to the user when this array is non-empty.
+   */
+  leagueWarnings: string[];
 }

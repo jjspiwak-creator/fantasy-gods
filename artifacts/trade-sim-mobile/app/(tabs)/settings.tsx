@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Switch,
   Platform,
   Alert,
   ScrollView,
@@ -19,7 +20,11 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { sessionId, clearSession } = useSession();
+  const {
+    sessionId, clearSession,
+    user, clearAuth,
+    showLeagueWarnings, setShowLeagueWarnings,
+  } = useSession();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -44,6 +49,30 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign Out",
+      "You'll return to the welcome screen. Your saved trades and preferences will be cleared from this device.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            clearSession();
+            clearAuth();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggleWarnings = (val: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowLeagueWarnings(val);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
@@ -54,7 +83,39 @@ export default function SettingsScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Connection status */}
+        {/* ── Account Section ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Your Account</Text>
+          <View style={styles.statusCard}>
+            <View style={[styles.accountIcon, { backgroundColor: user ? colors.primary + "18" : colors.secondary }]}>
+              <Feather name="user" size={18} color={user ? colors.primary : colors.mutedForeground} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statusTitle}>
+                {user ? user.email : "Guest"}
+              </Text>
+              <Text style={styles.statusDesc}>
+                {user
+                  ? `Member since ${new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
+                  : "Create an account to save trades across devices."}
+              </Text>
+            </View>
+          </View>
+
+          {user ? (
+            <TouchableOpacity style={styles.dangerBtn} onPress={handleSignOut} activeOpacity={0.8}>
+              <Feather name="log-out" size={16} color={colors.destructive} />
+              <Text style={styles.dangerBtnText}>Sign Out</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push("/auth")} activeOpacity={0.8}>
+              <Feather name="user-plus" size={16} color={colors.primaryForeground} />
+              <Text style={styles.primaryBtnText}>Create Account or Sign In</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ── ESPN Connection ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>ESPN Connection</Text>
           <View style={styles.statusCard}>
@@ -73,7 +134,7 @@ export default function SettingsScreen() {
 
           {sessionId ? (
             <TouchableOpacity style={styles.dangerBtn} onPress={handleDisconnect} activeOpacity={0.8}>
-              <Feather name="log-out" size={16} color={colors.destructive} />
+              <Feather name="wifi-off" size={16} color={colors.destructive} />
               <Text style={styles.dangerBtnText}>Disconnect ESPN Account</Text>
             </TouchableOpacity>
           ) : (
@@ -84,7 +145,28 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* About */}
+        {/* ── Trade Preferences ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Trade Preferences</Text>
+          <View style={[styles.statusCard, { alignItems: "center" }]}>
+            <View style={[styles.accountIcon, { backgroundColor: showLeagueWarnings ? "#f59e0b18" : colors.secondary }]}>
+              <Feather name={showLeagueWarnings ? "bell" : "bell-off"} size={16} color={showLeagueWarnings ? "#f59e0b" : colors.mutedForeground} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statusTitle}>League Rule Warnings</Text>
+              <Text style={styles.statusDesc}>Show a banner when a trade violates roster limits.</Text>
+            </View>
+            <Switch
+              value={showLeagueWarnings}
+              onValueChange={handleToggleWarnings}
+              trackColor={{ false: colors.secondary, true: colors.primary + "80" }}
+              thumbColor={showLeagueWarnings ? colors.primary : colors.mutedForeground}
+              ios_backgroundColor={colors.secondary}
+            />
+          </View>
+        </View>
+
+        {/* ── About ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>About TradeSim</Text>
           <View style={styles.infoCard}>
@@ -107,7 +189,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* How it works */}
+        {/* ── How grading works ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>How Trade Grading Works</Text>
           <View style={styles.infoCard}>
@@ -156,66 +238,41 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     scroll: { paddingHorizontal: 16, paddingTop: 4 },
     section: { marginBottom: 24 },
     sectionLabel: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: colors.mutedForeground,
-      textTransform: "uppercase",
-      letterSpacing: 1,
-      marginBottom: 10,
+      fontSize: 11, fontWeight: "700", color: colors.mutedForeground,
+      textTransform: "uppercase", letterSpacing: 1, marginBottom: 10,
       fontFamily: "Inter_700Bold",
     },
     statusCard: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 12,
-      backgroundColor: colors.card,
-      borderRadius: colors.radius,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 16,
-      marginBottom: 10,
+      flexDirection: "row", alignItems: "flex-start", gap: 12,
+      backgroundColor: colors.card, borderRadius: colors.radius,
+      borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 10,
+    },
+    accountIcon: {
+      width: 36, height: 36, borderRadius: 18,
+      alignItems: "center", justifyContent: "center",
     },
     statusDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
     statusTitle: { fontSize: 15, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     statusDesc: { fontSize: 13, color: colors.mutedForeground, marginTop: 2, fontFamily: "Inter_400Regular", lineHeight: 18 },
     primaryBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      paddingVertical: 13,
-      borderRadius: colors.radius,
-      backgroundColor: colors.primary,
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+      paddingVertical: 13, borderRadius: colors.radius, backgroundColor: colors.primary,
     },
     primaryBtnText: { fontSize: 14, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
     dangerBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      paddingVertical: 13,
-      borderRadius: colors.radius,
-      borderWidth: 1,
-      borderColor: colors.destructive + "50",
-      backgroundColor: colors.destructive + "10",
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+      paddingVertical: 13, borderRadius: colors.radius,
+      borderWidth: 1, borderColor: colors.destructive + "50", backgroundColor: colors.destructive + "10",
     },
     dangerBtnText: { fontSize: 14, fontWeight: "700", color: colors.destructive, fontFamily: "Inter_700Bold" },
     infoCard: {
-      backgroundColor: colors.card,
-      borderRadius: colors.radius,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 14,
-      gap: 14,
+      backgroundColor: colors.card, borderRadius: colors.radius,
+      borderWidth: 1, borderColor: colors.border, padding: 14, gap: 14,
     },
     infoRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     infoIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.primary + "15",
-      alignItems: "center",
-      justifyContent: "center",
+      width: 32, height: 32, borderRadius: 16,
+      backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center",
     },
     infoLabel: { fontSize: 14, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     infoDesc: { fontSize: 12, color: colors.mutedForeground, marginTop: 2, fontFamily: "Inter_400Regular", lineHeight: 17 },

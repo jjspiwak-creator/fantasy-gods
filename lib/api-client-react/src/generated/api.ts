@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AuthToken,
   ErrorResponse,
   EspnConnectBody,
   EspnConnectResponse,
@@ -25,12 +26,16 @@ import type {
   GetSavedTradesParams,
   HealthStatus,
   League,
+  LoginBody,
   RefreshSavedTradeParams,
+  RegisterBody,
   SaveTradeBody,
   SavedTrade,
   SimulateTradeBody,
   Team,
   TradeSimulationResult,
+  UpdateSettingsBody,
+  UserProfile,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -865,4 +870,325 @@ export const useDeleteSavedTrade = <
   TContext
 > => {
   return useMutation(getDeleteSavedTradeMutationOptions(options));
+};
+
+/**
+ * @summary Register a new user account
+ */
+export const getRegisterUserUrl = () => {
+  return `/api/auth/register`;
+};
+
+export const registerUser = async (
+  registerBody: RegisterBody,
+  options?: RequestInit,
+): Promise<AuthToken> => {
+  return customFetch<AuthToken>(getRegisterUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerBody),
+  });
+};
+
+export const getRegisterUserMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerUser>>,
+    TError,
+    { data: BodyType<RegisterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerUser>>,
+  TError,
+  { data: BodyType<RegisterBody> },
+  TContext
+> => {
+  const mutationKey = ["registerUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerUser>>,
+    { data: BodyType<RegisterBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerUser>>
+>;
+export type RegisterUserMutationBody = BodyType<RegisterBody>;
+export type RegisterUserMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Register a new user account
+ */
+export const useRegisterUser = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerUser>>,
+    TError,
+    { data: BodyType<RegisterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerUser>>,
+  TError,
+  { data: BodyType<RegisterBody> },
+  TContext
+> => {
+  return useMutation(getRegisterUserMutationOptions(options));
+};
+
+/**
+ * @summary Sign in to an existing account
+ */
+export const getLoginUserUrl = () => {
+  return `/api/auth/login`;
+};
+
+export const loginUser = async (
+  loginBody: LoginBody,
+  options?: RequestInit,
+): Promise<AuthToken> => {
+  return customFetch<AuthToken>(getLoginUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(loginBody),
+  });
+};
+
+export const getLoginUserMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginUser>>,
+    TError,
+    { data: BodyType<LoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof loginUser>>,
+  TError,
+  { data: BodyType<LoginBody> },
+  TContext
+> => {
+  const mutationKey = ["loginUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof loginUser>>,
+    { data: BodyType<LoginBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return loginUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LoginUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof loginUser>>
+>;
+export type LoginUserMutationBody = BodyType<LoginBody>;
+export type LoginUserMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Sign in to an existing account
+ */
+export const useLoginUser = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginUser>>,
+    TError,
+    { data: BodyType<LoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof loginUser>>,
+  TError,
+  { data: BodyType<LoginBody> },
+  TContext
+> => {
+  return useMutation(getLoginUserMutationOptions(options));
+};
+
+/**
+ * @summary Get the current logged-in user profile
+ */
+export const getGetMeUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const getMe = async (options?: RequestInit): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getGetMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMeQueryKey = () => {
+  return [`/api/auth/me`] as const;
+};
+
+export const getGetMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({
+    signal,
+  }) => getMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
+export type GetMeQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get the current logged-in user profile
+ */
+
+export function useGetMe<
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update user preferences (e.g. league warning visibility)
+ */
+export const getUpdateUserSettingsUrl = () => {
+  return `/api/auth/settings`;
+};
+
+export const updateUserSettings = async (
+  updateSettingsBody: UpdateSettingsBody,
+  options?: RequestInit,
+): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getUpdateUserSettingsUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSettingsBody),
+  });
+};
+
+export const getUpdateUserSettingsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUserSettings>>,
+    TError,
+    { data: BodyType<UpdateSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateUserSettings>>,
+  TError,
+  { data: BodyType<UpdateSettingsBody> },
+  TContext
+> => {
+  const mutationKey = ["updateUserSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateUserSettings>>,
+    { data: BodyType<UpdateSettingsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateUserSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateUserSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateUserSettings>>
+>;
+export type UpdateUserSettingsMutationBody = BodyType<UpdateSettingsBody>;
+export type UpdateUserSettingsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update user preferences (e.g. league warning visibility)
+ */
+export const useUpdateUserSettings = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUserSettings>>,
+    TError,
+    { data: BodyType<UpdateSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateUserSettings>>,
+  TError,
+  { data: BodyType<UpdateSettingsBody> },
+  TContext
+> => {
+  return useMutation(getUpdateUserSettingsMutationOptions(options));
 };

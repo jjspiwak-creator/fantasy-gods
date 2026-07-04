@@ -13,6 +13,8 @@ tags:
     description: ESPN Fantasy Football operations
   - name: trades
     description: Trade simulation operations
+  - name: auth
+    description: User account registration, login, and settings
 paths:
   /healthz:
     get:
@@ -264,7 +266,116 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "200":
+          description: Account created and token returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Sign in to an existing account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Authenticated token returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get the current logged-in user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/settings:
+    patch:
+      operationId: updateUserSettings
+      tags: [auth]
+      summary: Update user preferences (e.g. league warning visibility)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     HealthStatus:
       type: object
@@ -543,12 +654,90 @@ components:
             True when at least one participating team's post-trade roster exceeds
             their pre-trade size. The frontend must resolve all overflows (drops)
             before the trade can be saved.
+        leagueWarnings:
+          type: array
+          description: >
+            Human-readable descriptions of league rule violations produced by
+            this trade (e.g. roster overflow, positional limits exceeded).
+            Show a soft warning banner to the user when this array is non-empty.
+          items:
+            type: string
       required:
         - leagueId
         - teamResults
         - overallBalance
         - summary
         - hasRosterOverflow
+        - leagueWarnings
+
+    UserProfile:
+      type: object
+      description: Logged-in user account details
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        showLeagueWarnings:
+          type: boolean
+          description: Whether to show the Soft Warning Sandbox banner on the results screen
+        createdAt:
+          type: string
+          description: ISO timestamp
+      required:
+        - id
+        - email
+        - showLeagueWarnings
+        - createdAt
+
+    AuthToken:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT bearer token — store locally and include in Authorization header
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - token
+        - user
+
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          description: Minimum 8 characters
+      required:
+        - email
+        - password
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        showLeagueWarnings:
+          type: boolean
+          description: Set to false to hide the Soft Warning Sandbox banner permanently
+      required:
+        - showLeagueWarnings
 
     SaveTradeBody:
       type: object

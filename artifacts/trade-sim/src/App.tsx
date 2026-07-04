@@ -5,11 +5,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Components & Pages
 import { Layout } from "@/components/layout";
+import { AuthPage } from "@/pages/auth";
 import { ConnectPage } from "@/pages/connect";
 import { LeaguesPage } from "@/pages/leagues";
 import { LeagueDetailsPage } from "@/pages/league-details";
 import { TradeBuilderPage } from "@/pages/trade-builder";
 import { SavedTradesPage } from "@/pages/saved-trades";
+import { SettingsPage } from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -25,11 +27,15 @@ function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={ConnectPage} />
+        {/* Auth welcome / sign-in / register / continue as guest */}
+        <Route path="/" component={AuthPage} />
+        {/* ESPN credential entry (post-auth or guest track) */}
+        <Route path="/connect" component={ConnectPage} />
         <Route path="/leagues" component={LeaguesPage} />
         <Route path="/leagues/:leagueId" component={LeagueDetailsPage} />
         <Route path="/leagues/:leagueId/trade-builder" component={TradeBuilderPage} />
         <Route path="/saved-trades" component={SavedTradesPage} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

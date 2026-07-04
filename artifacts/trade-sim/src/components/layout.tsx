@@ -1,21 +1,25 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Trophy, Save, LogOut, GitCompareArrows, Wifi, WifiOff } from "lucide-react";
+import { Trophy, Save, LogOut, GitCompareArrows, Wifi, WifiOff, Settings, User } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { sessionId, username, clearSession } = useSession();
+  const { user, clearAuth } = useAuth();
 
   const handleLogout = () => {
     clearSession();
+    clearAuth();
     setLocation("/");
   };
 
   const navItems = [
     { href: "/leagues", icon: Trophy, label: "Leagues" },
     { href: "/saved-trades", icon: Save, label: "Saved" },
+    { href: "/settings", icon: Settings, label: "Settings" },
   ];
 
   const isConnected = !!sessionId;
@@ -44,6 +48,13 @@ export function Layout({ children }: { children: ReactNode }) {
               <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
                 <Wifi className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs font-medium text-white truncate max-w-[120px]">{username || "Manager"}</span>
+                {user && (
+                  <>
+                    <div className="w-px h-3 bg-white/20" />
+                    <User className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground truncate max-w-[100px]">{user.email}</span>
+                  </>
+                )}
               </div>
               {/* Desktop nav */}
               <nav className="hidden sm:flex items-center gap-1">

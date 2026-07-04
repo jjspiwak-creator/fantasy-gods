@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./authToken";
 export * from "./errorResponse";
 export * from "./espnConnectBody";
 export * from "./espnConnectResponse";
@@ -14,9 +15,11 @@ export * from "./getLeagueTeamsParams";
 export * from "./getSavedTradesParams";
 export * from "./healthStatus";
 export * from "./league";
+export * from "./loginBody";
 export * from "./player";
 export * from "./playerTransfer";
 export * from "./refreshSavedTradeParams";
+export * from "./registerBody";
 export * from "./rosterOverflow";
 export * from "./savedTrade";
 export * from "./saveTradeBody";
@@ -24,3 +27,5 @@ export * from "./simulateTradeBody";
 export * from "./team";
 export * from "./teamTradeResult";
 export * from "./tradeSimulationResult";
+export * from "./updateSettingsBody";
+export * from "./userProfile";

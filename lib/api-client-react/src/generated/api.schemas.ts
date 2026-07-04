@@ -129,6 +129,46 @@ export interface TradeSimulationResult {
   /** True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.
    */
   hasRosterOverflow: boolean;
+  /** Human-readable descriptions of league rule violations produced by this trade (e.g. roster overflow, positional limits exceeded). Show a soft warning banner to the user when this array is non-empty.
+   */
+  leagueWarnings: string[];
+}
+
+/**
+ * Logged-in user account details
+ */
+export interface UserProfile {
+  id: string;
+  email: string;
+  /** Whether to show the Soft Warning Sandbox banner on the results screen */
+  showLeagueWarnings: boolean;
+  /** ISO timestamp */
+  createdAt: string;
+}
+
+export interface AuthToken {
+  /** JWT bearer token — store locally and include in Authorization header */
+  token: string;
+  user: UserProfile;
+}
+
+export interface RegisterBody {
+  email: string;
+  /**
+   * Minimum 8 characters
+   * @minLength 8
+   */
+  password: string;
+}
+
+export interface LoginBody {
+  email: string;
+  password: string;
+}
+
+export interface UpdateSettingsBody {
+  /** Set to false to hide the Soft Warning Sandbox banner permanently */
+  showLeagueWarnings: boolean;
 }
 
 export interface SaveTradeBody {

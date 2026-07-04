@@ -37,7 +37,7 @@ export default function TradeBuilderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
-  const { sessionId } = useSession();
+  const { sessionId, authToken, showLeagueWarnings, setShowLeagueWarnings } = useSession();
   const queryClient = useQueryClient();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -389,6 +389,33 @@ export default function TradeBuilderScreen() {
               />
             )}
 
+            {/* ── SOFT LEAGUE WARNING BANNER ── */}
+            {showLeagueWarnings && (simulationResult.leagueWarnings?.length ?? 0) > 0 && (
+              <View style={{
+                marginHorizontal: 0, marginBottom: 12,
+                borderRadius: 14, borderWidth: 1,
+                borderColor: "#f59e0b50", backgroundColor: "#f59e0b0f",
+                padding: 14, flexDirection: "row", gap: 10, alignItems: "flex-start",
+              }}>
+                <Feather name="alert-triangle" size={16} color="#f59e0b" style={{ marginTop: 1 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#f59e0b", fontFamily: "Inter_700Bold", marginBottom: 4 }}>
+                    League Rule Notice
+                  </Text>
+                  {simulationResult.leagueWarnings.map((w: string, i: number) => (
+                    <Text key={i} style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", lineHeight: 17 }}>{w}</Text>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowLeagueWarnings(false)}
+                  style={{ padding: 4 }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Feather name="bell-off" size={14} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            )}
+
             {simulationResult.teamResults.map((result: TeamTradeResult) => (
               <ResultCard
                 key={result.teamId}
@@ -489,7 +516,7 @@ function OverflowSection({
             {result.rosterAfter.map((player) => {
               const isDropped = picked.includes(player.id);
               const isNewlyReceived = result.playersReceived.some((p) => p.id === player.id);
-              const isDisabled = !isDropped && picked.length >= excess;
+              const isDisabled = isNewlyReceived || (!isDropped && picked.length >= excess);
 
               return (
                 <TouchableOpacity

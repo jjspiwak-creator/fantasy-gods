@@ -37,6 +37,11 @@ export interface TradeSimulationResult {
   summary: string;
   /** True when at least one team's post-trade roster exceeds their pre-trade size. */
   hasRosterOverflow: boolean;
+  /**
+   * Human-readable descriptions of league rule violations produced by this trade.
+   * The frontend shows a soft warning banner when this array is non-empty.
+   */
+  leagueWarnings: string[];
 }
 
 function calculateGrade(
@@ -186,7 +191,9 @@ export function simulateTrade(
 
     // Roster overflow: team receives more players than they gave up, exceeding
     // their pre-trade roster size (assumed to be at/near the league maximum).
-    const excess = Math.max(0, rosterAfter.length - rosterBefore.length);
+    // Guard: if a team had zero players before (edge case), suppress false overflow.
+    const excess =
+      rosterBefore.length === 0 ? 0 : Math.max(0, rosterAfter.length - rosterBefore.length);
     const rosterOverflow: RosterOverflow | undefined =
       excess > 0 ? { excess } : undefined;
 
@@ -224,5 +231,17 @@ export function simulateTrade(
     summary = "Mixed results — check individual team breakdowns.";
   }
 
-  return { leagueId, teamResults, overallBalance, summary, hasRosterOverflow };
+  // Build human-readable league warning messages from any overflow detected
+  const leagueWarnings: string[] = teamResults
+    .filter((r) => r.rosterOverflow)
+    .map(
+      (r) =>
+        `${r.teamName} will have ${r.rosterOverflow!.excess} extra player${
+          r.rosterOverflow!.excess > 1 ? "s" : ""
+        } above their roster limit — ${r.rosterOverflow!.excess} drop${
+          r.rosterOverflow!.excess > 1 ? "s" : ""
+        } required before this trade can be processed.`
+    );
+
+  return { leagueId, teamResults, overallBalance, summary, hasRosterOverflow, leagueWarnings };
 }

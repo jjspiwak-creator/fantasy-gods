@@ -64,6 +64,7 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="auth" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="connect" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="league/[leagueId]/trade" options={{ headerShown: false }} />
     </Stack>

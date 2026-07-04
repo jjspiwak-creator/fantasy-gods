@@ -1,0 +1,1 @@
+- [API server Zod usage](api-server-zod.md) — api-server bundles with esbuild; use `z.string().email()` not `z.email()`, and zod must be a direct dep of api-server
