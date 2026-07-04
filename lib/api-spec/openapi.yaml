@@ -446,6 +446,19 @@ components:
         - transfers
         - teams
 
+    RosterOverflow:
+      type: object
+      description: >
+        Present on a TeamTradeResult when the team's post-trade roster would exceed
+        their pre-trade size. The user must select `excess` players to drop before
+        the trade can be finalized.
+      properties:
+        excess:
+          type: integer
+          description: Number of players this team must drop to reach a legal roster size
+      required:
+        - excess
+
     TeamTradeResult:
       type: object
       properties:
@@ -489,6 +502,11 @@ components:
         gradeRationale:
           type: string
           description: "Short explanation of the grade"
+        rosterOverflow:
+          $ref: "#/components/schemas/RosterOverflow"
+          description: >
+            Only present when this team would exceed their pre-trade roster size.
+            Absent (undefined) when the team's roster size is legal post-trade.
       required:
         - teamId
         - teamName
@@ -519,11 +537,18 @@ components:
           description: Sum of all value changes (should be ~0 for fair trades)
         summary:
           type: string
+        hasRosterOverflow:
+          type: boolean
+          description: >
+            True when at least one participating team's post-trade roster exceeds
+            their pre-trade size. The frontend must resolve all overflows (drops)
+            before the trade can be saved.
       required:
         - leagueId
         - teamResults
         - overallBalance
         - summary
+        - hasRosterOverflow
 
     SaveTradeBody:
       type: object

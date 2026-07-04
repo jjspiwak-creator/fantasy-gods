@@ -87,6 +87,15 @@ export interface SimulateTradeBody {
   teams: Team[];
 }
 
+/**
+ * Present on a TeamTradeResult when the team's post-trade roster would exceed their pre-trade size. The user must select `excess` players to drop before the trade can be finalized.
+
+ */
+export interface RosterOverflow {
+  /** Number of players this team must drop to reach a legal roster size */
+  excess: number;
+}
+
 export interface TeamTradeResult {
   teamId: string;
   teamName: string;
@@ -106,6 +115,9 @@ export interface TeamTradeResult {
   score: number;
   /** Short explanation of the grade */
   gradeRationale: string;
+  /** Only present when this team would exceed their pre-trade roster size. Absent (undefined) when the team's roster size is legal post-trade.
+   */
+  rosterOverflow?: RosterOverflow;
 }
 
 export interface TradeSimulationResult {
@@ -114,6 +126,9 @@ export interface TradeSimulationResult {
   /** Sum of all value changes (should be ~0 for fair trades) */
   overallBalance: number;
   summary: string;
+  /** True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.
+   */
+  hasRosterOverflow: boolean;
 }
 
 export interface SaveTradeBody {

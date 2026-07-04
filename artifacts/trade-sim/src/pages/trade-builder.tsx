@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useParams, Link, useLocation } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useLeagueTeams, useSimulateTradeMutation, useSaveTradeMutation } from "@/hooks/use-espn-api";
 import { useSession } from "@/hooks/use-session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerCard } from "@/components/player-card";
-import { GitCompareArrows, ArrowRight, Save, Trash2, CheckCircle2, ChevronRight, Scale } from "lucide-react";
+import {
+  GitCompareArrows, ArrowRight, Save, Trash2, CheckCircle2,
+  ChevronRight, Scale, AlertTriangle, X,
+} from "lucide-react";
 import { cn, formatTradeValue, getGradeColor, getGradeBg } from "@/lib/utils";
-import type { TradeSimulationResult, TeamTradeResult, PlayerTransfer } from "@workspace/api-client-react";
+import type { TradeSimulationResult, TeamTradeResult, PlayerTransfer, Player } from "@workspace/api-client-react";
 
 export function TradeBuilderPage() {
   const { leagueId } = useParams();
@@ -21,6 +24,8 @@ export function TradeBuilderPage() {
   const [transfers, setTransfers] = useState<PlayerTransfer[]>([]);
   const [simulationResult, setSimulationResult] = useState<TradeSimulationResult | null>(null);
   const [lastTransfers, setLastTransfers] = useState<PlayerTransfer[]>([]);
+  /** Record<teamId, playerId[]> — players the user has chosen to drop for each overflow team */
+  const [dropsPerTeam, setDropsPerTeam] = useState<Record<string, string[]>>({});
 
   const handleTeamToggle = (teamId: string) => {
     setSelectedTeamIds(prev =>
@@ -28,9 +33,6 @@ export function TradeBuilderPage() {
     );
   };
 
-  /** Toggle a player into/out of the transfer matrix.
-   *  Default destination: first other selected team (convenient for 2-team trades,
-   *  and can be changed via the inline selector). */
   const togglePlayerTransfer = (playerId: string, fromTeamId: string) => {
     setTransfers(prev => {
       if (prev.some(t => t.playerId === playerId)) {
@@ -42,14 +44,34 @@ export function TradeBuilderPage() {
     });
   };
 
-  /** Change where a selected player is being sent. */
   const changeDestination = (playerId: string, toTeamId: string) => {
     setTransfers(prev => prev.map(t => t.playerId === playerId ? { ...t, toTeamId } : t));
   };
 
+  /** Toggle a drop-pick for an overflowing team. Capped at `excess`. */
+  const toggleDrop = (teamId: string, playerId: string, excess: number) => {
+    setDropsPerTeam(prev => {
+      const current = prev[teamId] ?? [];
+      if (current.includes(playerId)) {
+        return { ...prev, [teamId]: current.filter(id => id !== playerId) };
+      }
+      if (current.length >= excess) return prev; // already at limit
+      return { ...prev, [teamId]: [...current, playerId] };
+    });
+  };
+
+  /** True when every overflow team has selected exactly `excess` drops. */
+  const overflowResolved =
+    !simulationResult?.hasRosterOverflow ||
+    simulationResult.teamResults.every(r => {
+      if (!r.rosterOverflow) return true;
+      return (dropsPerTeam[r.teamId]?.length ?? 0) >= r.rosterOverflow.excess;
+    });
+
   const handleSimulate = () => {
     if (!sessionId || !leagueId || !teams) return;
     setLastTransfers(transfers);
+    setDropsPerTeam({});
     simulateMutation.mutate(
       { sessionId, leagueId, transfers, teams },
       { onSuccess: (res) => { setSimulationResult(res); setStep(3); } }
@@ -57,7 +79,7 @@ export function TradeBuilderPage() {
   };
 
   const handleSave = () => {
-    if (!sessionId || !leagueId || !simulationResult) return;
+    if (!sessionId || !leagueId || !simulationResult || !overflowResolved) return;
     const names = simulationResult.teamResults.map(t => t.teamName).join(" & ");
     saveMutation.mutate(
       { sessionId, leagueId, name: `Trade: ${names}`, result: simulationResult, transfers: lastTransfers },
@@ -110,9 +132,7 @@ export function TradeBuilderPage() {
                   onClick={() => handleTeamToggle(team.id)}
                   className={cn(
                     "cursor-pointer rounded-xl border p-4 transition-all duration-200",
-                    isSelected
-                      ? "bg-primary/10 border-primary box-glow"
-                      : "bg-card hover:border-white/20 border-white/5"
+                    isSelected ? "bg-primary/10 border-primary box-glow" : "bg-card hover:border-white/20 border-white/5"
                   )}
                 >
                   <div className="flex justify-between items-center mb-2">
@@ -138,10 +158,7 @@ export function TradeBuilderPage() {
               </p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={() => setStep(1)}
-                className="px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all"
-              >
+              <button onClick={() => setStep(1)} className="px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all">
                 Back
               </button>
               <button
@@ -158,29 +175,20 @@ export function TradeBuilderPage() {
           <div className="grid lg:grid-cols-2 gap-8">
             {selectedTeamsData.map(team => {
               const otherTeams = selectedTeamsData.filter(t => t.id !== team.id);
-
               return (
                 <Card key={team.id} className="border-t-4 border-t-primary/50">
                   <CardHeader className="border-b border-white/5 pb-4 bg-black/20">
                     <CardTitle className="text-xl">{team.name}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Select players this team is giving up and choose where each goes.
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Select players this team is giving up and choose where each goes.</p>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="max-h-[600px] overflow-y-auto p-4 space-y-1.5">
                       {team.roster.map(player => {
                         const transfer = transfers.find(t => t.playerId === player.id);
                         const isSelected = !!transfer;
-
                         return (
                           <div key={player.id}>
-                            <PlayerCard
-                              player={player}
-                              selected={isSelected}
-                              onClick={() => togglePlayerTransfer(player.id, team.id)}
-                              compact
-                            />
+                            <PlayerCard player={player} selected={isSelected} onClick={() => togglePlayerTransfer(player.id, team.id)} compact />
                             {isSelected && otherTeams.length > 0 && (
                               <div className="flex items-center gap-2 px-3 pt-1 pb-1.5">
                                 <ArrowRight className="w-3 h-3 text-primary shrink-0" />
@@ -191,9 +199,7 @@ export function TradeBuilderPage() {
                                   onClick={e => e.stopPropagation()}
                                   className="flex-1 min-w-0 text-xs bg-background border border-primary/30 rounded-lg px-2 py-1 text-primary focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer"
                                 >
-                                  {otherTeams.map(t => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
-                                  ))}
+                                  {otherTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                               </div>
                             )}
@@ -207,7 +213,6 @@ export function TradeBuilderPage() {
             })}
           </div>
 
-          {/* Live summary of transfers */}
           {hasTransfers && (
             <div className="bg-card border border-white/10 rounded-xl p-5 space-y-2">
               <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Transfer Summary</h4>
@@ -239,6 +244,7 @@ export function TradeBuilderPage() {
       {/* ── STEP 3: RESULTS ── */}
       {step === 3 && simulationResult && (
         <div className="space-y-8">
+          {/* Action header */}
           <div className="flex justify-between items-center glass-panel p-6 rounded-2xl">
             <div>
               <h2 className="text-3xl font-display font-bold">SIMULATION <span className="text-primary">COMPLETE</span></h2>
@@ -250,25 +256,37 @@ export function TradeBuilderPage() {
               </p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={() => setStep(2)}
-                className="px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all"
-              >
+              <button onClick={() => setStep(2)} className="px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all">
                 Edit Trade
               </button>
               <button
-                disabled={saveMutation.isPending}
+                disabled={saveMutation.isPending || !overflowResolved}
                 onClick={handleSave}
-                className="px-6 py-3 rounded-xl font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90 box-glow transition-all flex items-center gap-2"
+                className="px-6 py-3 rounded-xl font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90 box-glow transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-5 h-5" /> {saveMutation.isPending ? "Saving..." : "Save Trade"}
               </button>
             </div>
           </div>
 
+          {/* ── ROSTER OVERFLOW RESOLUTION ── */}
+          {simulationResult.hasRosterOverflow && (
+            <RosterOverflowSection
+              teamResults={simulationResult.teamResults}
+              dropsPerTeam={dropsPerTeam}
+              onToggleDrop={toggleDrop}
+              resolved={overflowResolved}
+            />
+          )}
+
+          {/* Results grid */}
           <div className="grid xl:grid-cols-2 gap-8">
             {simulationResult.teamResults.map(result => (
-              <TradeResultCard key={result.teamId} result={result} />
+              <TradeResultCard
+                key={result.teamId}
+                result={result}
+                droppedIds={dropsPerTeam[result.teamId] ?? []}
+              />
             ))}
           </div>
         </div>
@@ -277,7 +295,147 @@ export function TradeBuilderPage() {
   );
 }
 
-function TradeResultCard({ result }: { result: TeamTradeResult }) {
+/* ─────────────────────────────────────────────
+   Roster Overflow Section — force drop picks
+───────────────────────────────────────────── */
+function RosterOverflowSection({
+  teamResults,
+  dropsPerTeam,
+  onToggleDrop,
+  resolved,
+}: {
+  teamResults: TeamTradeResult[];
+  dropsPerTeam: Record<string, string[]>;
+  onToggleDrop: (teamId: string, playerId: string, excess: number) => void;
+  resolved: boolean;
+}) {
+  const overflowing = teamResults.filter(r => r.rosterOverflow);
+  if (overflowing.length === 0) return null;
+
+  const totalExcess = overflowing.reduce((s, r) => s + (r.rosterOverflow?.excess ?? 0), 0);
+  const totalDropped = overflowing.reduce((s, r) => s + (dropsPerTeam[r.teamId]?.length ?? 0), 0);
+
+  return (
+    <div className={cn(
+      "rounded-2xl border-2 overflow-hidden transition-colors",
+      resolved ? "border-success/40 bg-success/5" : "border-amber-500/40 bg-amber-500/5"
+    )}>
+      {/* Banner */}
+      <div className={cn(
+        "px-6 py-4 flex items-center gap-3",
+        resolved ? "bg-success/10" : "bg-amber-500/10"
+      )}>
+        {resolved
+          ? <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+          : <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
+        <div className="flex-1">
+          <h3 className={cn("font-bold text-lg", resolved ? "text-success" : "text-amber-300")}>
+            {resolved ? "Roster Drops Resolved" : "Roster Overflow — Action Required"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {resolved
+              ? "All drops selected. You can now save this trade."
+              : `${overflowing.length} team${overflowing.length > 1 ? "s" : ""} will exceed their roster limit. Select players to drop before saving.`}
+          </p>
+        </div>
+        <span className={cn(
+          "font-display font-bold text-2xl tabular-nums",
+          resolved ? "text-success" : "text-amber-300"
+        )}>
+          {totalDropped}/{totalExcess}
+        </span>
+      </div>
+
+      {/* Per-team drop pickers */}
+      {!resolved && (
+        <div className="p-6 space-y-6">
+          {overflowing.map(result => {
+            const excess = result.rosterOverflow!.excess;
+            const picked = dropsPerTeam[result.teamId] ?? [];
+            const remaining = excess - picked.length;
+
+            return (
+              <div key={result.teamId} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-white">{result.teamName}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Receiving {result.playersReceived.length} · Giving {result.playersGiven.length} · Net +{excess}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    "text-sm font-bold px-3 py-1 rounded-full border",
+                    remaining > 0
+                      ? "text-amber-300 border-amber-500/40 bg-amber-500/10"
+                      : "text-success border-success/40 bg-success/10"
+                  )}>
+                    {remaining > 0 ? `Drop ${remaining} more` : "✓ Done"}
+                  </span>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Choose {excess} player{excess > 1 ? "s" : ""} from {result.teamName}'s post-trade roster to release:
+                </p>
+
+                <div className="space-y-1.5">
+                  {result.rosterAfter.map(player => {
+                    const isDropped = picked.includes(player.id);
+                    const isNewlyReceived = result.playersReceived.some(p => p.id === player.id);
+                    const isDisabled = !isDropped && picked.length >= excess;
+
+                    return (
+                      <div
+                        key={player.id}
+                        onClick={() => !isDisabled && onToggleDrop(result.teamId, player.id, excess)}
+                        className={cn(
+                          "group relative overflow-hidden rounded-xl border p-3 transition-all duration-200 flex items-center gap-3",
+                          isDropped
+                            ? "bg-destructive/10 border-destructive/50 cursor-pointer"
+                            : isDisabled
+                            ? "bg-secondary/20 border-white/5 cursor-not-allowed opacity-50"
+                            : "bg-secondary/40 border-white/5 cursor-pointer hover:border-amber-500/40 hover:bg-amber-500/5"
+                        )}
+                      >
+                        {/* Position badge */}
+                        <div className="w-10 h-10 rounded-lg bg-secondary border border-white/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-muted-foreground uppercase">{player.position}</span>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-white text-sm truncate">{player.name}</span>
+                            {isNewlyReceived && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/20 shrink-0">New</span>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">{player.nflTeam} · {player.tradeValue.toFixed(1)} val</span>
+                        </div>
+
+                        <div className={cn(
+                          "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
+                          isDropped
+                            ? "bg-destructive border-destructive"
+                            : "border-white/20 bg-transparent"
+                        )}>
+                          {isDropped && <X className="w-3.5 h-3.5 text-white" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Individual team result card
+───────────────────────────────────────────── */
+function TradeResultCard({ result, droppedIds }: { result: TeamTradeResult; droppedIds: string[] }) {
   const gradeColor = getGradeColor(result.grade);
   const gradeBg = getGradeBg(result.grade);
 
@@ -309,6 +467,11 @@ function TradeResultCard({ result }: { result: TeamTradeResult }) {
         <span className="text-xs text-muted-foreground ml-auto">
           {result.tradeValueBefore.toFixed(1)} → {result.tradeValueAfter.toFixed(1)}
         </span>
+        {result.rosterOverflow && (
+          <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full ml-2">
+            +{result.rosterOverflow.excess} overflow
+          </span>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
@@ -331,6 +494,23 @@ function TradeResultCard({ result }: { result: TeamTradeResult }) {
               ? result.playersReceived.map(p => <PlayerCard key={p.id} player={p} compact className="bg-success/5 border-success/20" />)
               : <div className="text-sm text-muted-foreground italic">None</div>}
           </div>
+          {/* Dropped players (shown when selected in overflow section) */}
+          {droppedIds.length > 0 && (
+            <div className="pt-2 border-t border-white/5">
+              <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Dropping</h5>
+              <div className="space-y-1.5">
+                {result.rosterAfter
+                  .filter(p => droppedIds.includes(p.id))
+                  .map(p => (
+                    <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/5 border border-destructive/20">
+                      <X className="w-3 h-3 text-destructive shrink-0" />
+                      <span className="text-xs font-semibold text-white truncate">{p.name}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">{p.tradeValue.toFixed(1)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Card>

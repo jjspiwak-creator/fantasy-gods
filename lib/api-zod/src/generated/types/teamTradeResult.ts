@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Player } from "./player";
+import type { RosterOverflow } from "./rosterOverflow";
 
 export interface TeamTradeResult {
   teamId: string;
@@ -26,4 +27,7 @@ export interface TeamTradeResult {
   score: number;
   /** Short explanation of the grade */
   gradeRationale: string;
+  /** Only present when this team would exceed their pre-trade roster size. Absent (undefined) when the team's roster size is legal post-trade.
+   */
+  rosterOverflow?: RosterOverflow;
 }

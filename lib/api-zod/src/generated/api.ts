@@ -216,12 +216,29 @@ export const SimulateTradeResponse = zod.object({
         .number()
         .describe("Numeric score 0-100 for this team's side of the trade"),
       gradeRationale: zod.string().describe("Short explanation of the grade"),
+      rosterOverflow: zod
+        .object({
+          excess: zod
+            .number()
+            .describe(
+              "Number of players this team must drop to reach a legal roster size",
+            ),
+        })
+        .optional()
+        .describe(
+          "Only present when this team would exceed their pre-trade roster size. Absent (undefined) when the team's roster size is legal post-trade.\n",
+        ),
     }),
   ),
   overallBalance: zod
     .number()
     .describe("Sum of all value changes (should be ~0 for fair trades)"),
   summary: zod.string(),
+  hasRosterOverflow: zod
+    .boolean()
+    .describe(
+      "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
+    ),
 });
 
 /**
@@ -309,12 +326,29 @@ export const GetSavedTradesResponseItem = zod.object({
           .number()
           .describe("Numeric score 0-100 for this team's side of the trade"),
         gradeRationale: zod.string().describe("Short explanation of the grade"),
+        rosterOverflow: zod
+          .object({
+            excess: zod
+              .number()
+              .describe(
+                "Number of players this team must drop to reach a legal roster size",
+              ),
+          })
+          .optional()
+          .describe(
+            "Only present when this team would exceed their pre-trade roster size. Absent (undefined) when the team's roster size is legal post-trade.\n",
+          ),
       }),
     ),
     overallBalance: zod
       .number()
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
+    hasRosterOverflow: zod
+      .boolean()
+      .describe(
+        "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
+      ),
   }),
   transfers: zod
     .array(
@@ -420,12 +454,29 @@ export const SaveTradeBody = zod.object({
           .number()
           .describe("Numeric score 0-100 for this team's side of the trade"),
         gradeRationale: zod.string().describe("Short explanation of the grade"),
+        rosterOverflow: zod
+          .object({
+            excess: zod
+              .number()
+              .describe(
+                "Number of players this team must drop to reach a legal roster size",
+              ),
+          })
+          .optional()
+          .describe(
+            "Only present when this team would exceed their pre-trade roster size. Absent (undefined) when the team's roster size is legal post-trade.\n",
+          ),
       }),
     ),
     overallBalance: zod
       .number()
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
+    hasRosterOverflow: zod
+      .boolean()
+      .describe(
+        "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
+      ),
   }),
   transfers: zod
     .array(
@@ -534,12 +585,29 @@ export const RefreshSavedTradeResponse = zod.object({
           .number()
           .describe("Numeric score 0-100 for this team's side of the trade"),
         gradeRationale: zod.string().describe("Short explanation of the grade"),
+        rosterOverflow: zod
+          .object({
+            excess: zod
+              .number()
+              .describe(
+                "Number of players this team must drop to reach a legal roster size",
+              ),
+          })
+          .optional()
+          .describe(
+            "Only present when this team would exceed their pre-trade roster size. Absent (undefined) when the team's roster size is legal post-trade.\n",
+          ),
       }),
     ),
     overallBalance: zod
       .number()
       .describe("Sum of all value changes (should be ~0 for fair trades)"),
     summary: zod.string(),
+    hasRosterOverflow: zod
+      .boolean()
+      .describe(
+        "True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.\n",
+      ),
   }),
   transfers: zod
     .array(

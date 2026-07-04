@@ -6,6 +6,11 @@ export interface PlayerTransfer {
   toTeamId: string;
 }
 
+export interface RosterOverflow {
+  /** How many players this team must drop to reach a legal roster size. */
+  excess: number;
+}
+
 export interface TeamTradeResult {
   teamId: string;
   teamName: string;
@@ -21,6 +26,8 @@ export interface TeamTradeResult {
   grade: string;
   score: number;
   gradeRationale: string;
+  /** Only present when rosterAfter exceeds the team's pre-trade roster size. */
+  rosterOverflow?: RosterOverflow;
 }
 
 export interface TradeSimulationResult {
@@ -28,6 +35,8 @@ export interface TradeSimulationResult {
   teamResults: TeamTradeResult[];
   overallBalance: number;
   summary: string;
+  /** True when at least one team's post-trade roster exceeds their pre-trade size. */
+  hasRosterOverflow: boolean;
 }
 
 function calculateGrade(
@@ -175,6 +184,12 @@ export function simulateTrade(
       tradeValueBefore
     );
 
+    // Roster overflow: team receives more players than they gave up, exceeding
+    // their pre-trade roster size (assumed to be at/near the league maximum).
+    const excess = Math.max(0, rosterAfter.length - rosterBefore.length);
+    const rosterOverflow: RosterOverflow | undefined =
+      excess > 0 ? { excess } : undefined;
+
     teamResults.push({
       teamId,
       teamName: team.name,
@@ -190,10 +205,12 @@ export function simulateTrade(
       grade,
       score,
       gradeRationale,
+      rosterOverflow,
     });
   }
 
   const overallBalance = teamResults.reduce((s, r) => s + r.tradeValueChange, 0);
+  const hasRosterOverflow = teamResults.some((r) => r.rosterOverflow !== undefined);
 
   const winners = teamResults.filter((r) => r.verdict === "win").map((r) => r.teamName);
   const losers = teamResults.filter((r) => r.verdict === "loss").map((r) => r.teamName);
@@ -207,5 +224,5 @@ export function simulateTrade(
     summary = "Mixed results — check individual team breakdowns.";
   }
 
-  return { leagueId, teamResults, overallBalance, summary };
+  return { leagueId, teamResults, overallBalance, summary, hasRosterOverflow };
 }

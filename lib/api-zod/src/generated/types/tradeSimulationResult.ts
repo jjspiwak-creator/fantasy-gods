@@ -13,4 +13,7 @@ export interface TradeSimulationResult {
   /** Sum of all value changes (should be ~0 for fair trades) */
   overallBalance: number;
   summary: string;
+  /** True when at least one participating team's post-trade roster exceeds their pre-trade size. The frontend must resolve all overflows (drops) before the trade can be saved.
+   */
+  hasRosterOverflow: boolean;
 }
