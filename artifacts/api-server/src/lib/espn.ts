@@ -111,6 +111,7 @@ async function getUserLeagueIds(creds: EspnCredentials, season: number): Promise
 
   const resp = await fetch(url, { headers });
   if (!resp.ok) {
+    logger.warn({ url, status: resp.status }, "ESPN getUserLeagueIds non-OK response");
     throw new Error(`ESPN API returned ${resp.status}`);
   }
 
@@ -169,6 +170,10 @@ export async function fetchLeagueTeams(creds: EspnCredentials, leagueId: string,
 
   const resp = await fetch(url, { headers });
   if (!resp.ok) {
+    logger.error(
+      { url, status: resp.status, leagueId, season },
+      "ESPN fetchLeagueTeams non-OK response"
+    );
     throw new Error(`ESPN API returned ${resp.status} for league ${leagueId}`);
   }
 
