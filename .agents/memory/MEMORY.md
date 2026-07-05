@@ -1,3 +1,4 @@
 - [API server Zod usage](api-server-zod.md) — api-server bundles with esbuild; use `z.string().email()` not `z.email()`, and zod must be a direct dep of api-server
 - [Vibe Mode architecture](vibe-mode.md) — vibePreference field and useVibeText hook pattern across web + mobile
 - [Projection sync pipeline](projection-sync.md) — ESPN public kona_player_info endpoint, player_projections table, admin sync route pattern
+- [VORP analytics engine](vorp-analytics.md) — computeLeagueSummary() in analytics.ts, endpoint GET /api/metrics/league-summary
