@@ -23,6 +23,7 @@ import {
   type LeagueSummary,
 } from "@/hooks/useLeagueSummary";
 import { getLeagues, type League } from "@workspace/api-client-react";
+import { getGradeColor } from "@/lib/utils";
 
 type RankView = "weekly" | "ros";
 
@@ -378,14 +379,6 @@ function RankCard({
       </View>
     </View>
   );
-}
-
-function getGradeColor(grade: string): string {
-  if (grade.startsWith("A")) return "#22ba5a";
-  if (grade === "B+" || grade === "B") return "#08d4f0";
-  if (grade === "B-" || grade === "C+") return "#7c5cbf";
-  if (grade === "C" || grade === "C-") return "#f59e0b";
-  return "#d9243a";
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────

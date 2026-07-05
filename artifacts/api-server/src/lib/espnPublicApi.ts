@@ -84,6 +84,7 @@ export async function fetchPublicPlayerProjections(
       Accept: "application/json",
       "X-Fantasy-Filter": filter,
     },
+    signal: AbortSignal.timeout(8_000),
   });
 
   if (!resp.ok) {

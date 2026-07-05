@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, savedTradesTable } from "@workspace/db";
+import { eq, and, isNull } from "drizzle-orm";
 import { signToken, verifyToken, hashPassword, comparePassword, extractToken } from "../lib/auth";
 import { logger } from "../lib/logger";
 
@@ -10,6 +10,7 @@ const router = Router();
 const RegisterBody = z.object({
   email: z.string().email(),
   password: z.string().min(8),
+  sessionId: z.string().optional(),
 });
 
 const LoginBody = z.object({
@@ -57,6 +58,23 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       .insert(usersTable)
       .values({ email: email.toLowerCase(), passwordHash, showLeagueWarnings: true })
       .returning();
+
+    // Migrate guest-saved trades to the permanent account
+    if (parsed.data.sessionId) {
+      try {
+        await db
+          .update(savedTradesTable)
+          .set({ userId: user.id })
+          .where(
+            and(
+              eq(savedTradesTable.sessionId, parsed.data.sessionId),
+              isNull(savedTradesTable.userId),
+            ),
+          );
+      } catch (migrateErr) {
+        logger.warn({ migrateErr }, "Guest trade migration failed — non-fatal, trades still visible via sessionId");
+      }
+    }
 
     const token = signToken({ userId: user.id, email: user.email });
     res.json({ token, user: serializeUser(user) });

@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSession } from "@/context/SessionContext";
+import { useVibeText } from "@/hooks/useVibeText";
 import {
   useGetSavedTrades,
   useDeleteSavedTrade,
@@ -32,6 +33,15 @@ export default function SavedTradesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { sessionId } = useSession();
+
+  const headerTitle   = useVibeText("Saved Trades", "Your Trade Vault");
+  const headerSub     = useVibeText("Scores update live from ESPN", "Live scores, no excuses");
+  const loadingText   = useVibeText("Loading saved trades...", "Pulling your moves...");
+  const emptyTitle    = useVibeText("No saved trades", "Nothing saved yet");
+  const emptyDesc     = useVibeText(
+    "Build and save a trade simulation to track it here.",
+    "Start cooking — build a trade and save it here.",
+  );
   const queryClient = useQueryClient();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -97,21 +107,21 @@ export default function SavedTradesScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Saved Trades</Text>
-          <Text style={styles.headerSub}>Scores update live from ESPN</Text>
+          <Text style={styles.headerTitle}>{headerTitle}</Text>
+          <Text style={styles.headerSub}>{headerSub}</Text>
         </View>
       </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading saved trades...</Text>
+          <Text style={styles.loadingText}>{loadingText}</Text>
         </View>
       ) : !trades || trades.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Feather name="bookmark" size={48} color={colors.mutedForeground} />
-          <Text style={styles.emptyTitle}>No saved trades</Text>
-          <Text style={styles.emptyDesc}>Build and save a trade simulation to track it here.</Text>
+          <Text style={styles.emptyTitle}>{emptyTitle}</Text>
+          <Text style={styles.emptyDesc}>{emptyDesc}</Text>
           <TouchableOpacity style={styles.actionBtn} onPress={() => router.push("/")} activeOpacity={0.8}>
             <Text style={styles.actionBtnText}>Go to Leagues</Text>
           </TouchableOpacity>

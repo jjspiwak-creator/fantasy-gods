@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -65,6 +66,7 @@ export default function TradeBuilderScreen() {
   const simulateLabel = useVibeText("Simulate", "Run It");
   const valueSectionLabel = useVibeText("Value Change", "Net Haul");
   const liveDeltaLabel = useVibeText("Live Net Delta", "Running Tab");
+  const bannerTitleText = useVibeText("League Rule Notice", "Hold Up — Check the Roster");
 
   const { data: teams, isLoading } = useGetLeagueTeams(
     leagueId ?? "",
@@ -514,7 +516,7 @@ export default function TradeBuilderScreen() {
                       marginBottom: 4,
                     }}
                   >
-                    League Rule Notice
+                    {bannerTitleText}
                   </Text>
                   {simulationResult.leagueWarnings.map((w: string, i: number) => (
                     <Text
@@ -598,6 +600,35 @@ export default function TradeBuilderScreen() {
                   >
                     If this app saved your season, tell your friends — we need more numbers!
                   </Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      Share.share({
+                        message:
+                          "I've been using TradeSim to analyze multi-team fantasy trades. Stop getting fleeced — know before you deal. 🏈",
+                        title: "TradeSim — Fantasy Trade Analyzer",
+                      })
+                    }
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 5,
+                      marginTop: 8,
+                      alignSelf: "flex-start",
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="share-2" size={13} color={colors.primary} />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: colors.primary,
+                        fontFamily: "Inter_600SemiBold",
+                        fontWeight: "600",
+                      }}
+                    >
+                      Share TradeSim
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             )}

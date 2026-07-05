@@ -24,6 +24,7 @@ export default function SettingsScreen() {
     sessionId, clearSession,
     user, clearAuth,
     showLeagueWarnings, setShowLeagueWarnings,
+    vibePreference, setVibePreference,
   } = useSession();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -148,6 +149,37 @@ export default function SettingsScreen() {
         {/* ── Trade Preferences ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Trade Preferences</Text>
+
+          {/* Vibe Mode toggle */}
+          <View style={[styles.statusCard, { alignItems: "center", marginBottom: 10 }]}>
+            <View style={[styles.accountIcon, { backgroundColor: vibePreference === "the_boys" ? colors.primary + "18" : colors.secondary }]}>
+              <Feather
+                name={vibePreference === "the_boys" ? "zap" : "bar-chart-2"}
+                size={16}
+                color={vibePreference === "the_boys" ? colors.primary : colors.mutedForeground}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statusTitle}>Vibe Mode</Text>
+              <Text style={styles.statusDesc}>
+                {vibePreference === "the_boys"
+                  ? "the_boys — casual fantasy commentary"
+                  : "Corporate — analytics-focused copy"}
+              </Text>
+            </View>
+            <Switch
+              value={vibePreference === "the_boys"}
+              onValueChange={(val) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setVibePreference(val ? "the_boys" : "corporate");
+              }}
+              trackColor={{ false: colors.secondary, true: colors.primary + "80" }}
+              thumbColor={vibePreference === "the_boys" ? colors.primary : colors.mutedForeground}
+              ios_backgroundColor={colors.secondary}
+            />
+          </View>
+
+          {/* League Rule Warnings toggle */}
           <View style={[styles.statusCard, { alignItems: "center" }]}>
             <View style={[styles.accountIcon, { backgroundColor: showLeagueWarnings ? "#f59e0b18" : colors.secondary }]}>
               <Feather name={showLeagueWarnings ? "bell" : "bell-off"} size={16} color={showLeagueWarnings ? "#f59e0b" : colors.mutedForeground} />
