@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
   Share,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -54,19 +55,63 @@ export default function TradeBuilderScreen() {
   const dismissBannerText = useVibeText(
     "Suppress Rule Warnings",
     "Tired of seeing this? Click to hide.",
+    "Take it off the board.",
+    "Kill the alert.",
   );
-  const step1Title = useVibeText("Pick Participating Teams", "Who's in on this deal?");
-  const step1Desc = useVibeText("Choose 2–12 teams for this trade", "Pick your players in this heist");
-  const step2Title = useVibeText("Assign Players to Destinations", "Who's going where?");
+  const step1Title = useVibeText(
+    "Pick Participating Teams",
+    "Who's in on this deal?",
+    "Name Your Starters",
+    "Set Your Parlay Legs",
+  );
+  const step1Desc = useVibeText(
+    "Choose 2–12 teams for this trade",
+    "Pick your players in this heist",
+    "Pick the squads in this deal, coach",
+    "Pick 2–12 legs for this parlay",
+  );
+  const step2Title = useVibeText(
+    "Assign Players to Destinations",
+    "Who's going where?",
+    "Run Your Formation",
+    "Place Your Bets",
+  );
   const step2Desc = useVibeText(
     "Tap a player, then choose where they go",
     "Tap to move 'em, pick their new home",
+    "Tap a player, call the play, execute",
+    "Tap to move value — every chip counts",
   );
-  const step3Title = useVibeText("Simulation Complete", "Here's the Breakdown");
-  const simulateLabel = useVibeText("Simulate", "Run It");
-  const valueSectionLabel = useVibeText("Value Change", "Net Haul");
-  const liveDeltaLabel = useVibeText("Live Net Delta", "Running Tab");
-  const bannerTitleText = useVibeText("League Rule Notice", "Hold Up — Check the Roster");
+  const step3Title = useVibeText(
+    "Simulation Complete",
+    "Here's the Breakdown",
+    "Play's in the Books",
+    "Line Has Settled",
+  );
+  const simulateLabel = useVibeText(
+    "Simulate",
+    "Run It",
+    "Execute the Play",
+    "Lock It In",
+  );
+  const valueSectionLabel = useVibeText(
+    "Value Change",
+    "Net Haul",
+    "Yards on the Exchange",
+    "Net Units",
+  );
+  const liveDeltaLabel = useVibeText(
+    "Live Net Delta",
+    "Running Tab",
+    "Live Yardage",
+    "Live Unit Swing",
+  );
+  const bannerTitleText = useVibeText(
+    "League Rule Notice",
+    "Hold Up — Check the Roster",
+    "Flag on the Play",
+    "Line Error — Check the Spread",
+  );
 
   const { data: teams, isLoading } = useGetLeagueTeams(
     leagueId ?? "",
@@ -83,6 +128,8 @@ export default function TradeBuilderScreen() {
   const [simulationResult, setSimulationResult] = useState<TradeSimulationResult | null>(null);
   const [lastTransfers, setLastTransfers] = useState<PlayerTransfer[]>([]);
   const [dropsPerTeam, setDropsPerTeam] = useState<Record<string, string[]>>({});
+  const [showInterstitial, setShowInterstitial] = useState(false);
+  const interstitialStartRef = useRef<number>(0);
 
   const styles = makeStyles(colors);
 
@@ -155,15 +202,23 @@ export default function TradeBuilderScreen() {
     setLastTransfers(transfers);
     setDropsPerTeam({});
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowInterstitial(true);
+    interstitialStartRef.current = Date.now();
     simulateMutation.mutate(
       { data: { sessionId, leagueId, transfers, teams } },
       {
         onSuccess: (result) => {
           setSimulationResult(result);
-          setStep(3);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          const elapsed = Date.now() - interstitialStartRef.current;
+          const remaining = Math.max(0, 2000 - elapsed);
+          setTimeout(() => {
+            setShowInterstitial(false);
+            setStep(3);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }, remaining);
         },
         onError: () => {
+          setShowInterstitial(false);
           Alert.alert("Simulation Failed", "Could not simulate the trade. Please try again.");
         },
       },
@@ -635,6 +690,23 @@ export default function TradeBuilderScreen() {
           </ScrollView>
         </View>
       )}
+
+      {/* ── Interstitial Ad Overlay ── */}
+      <Modal visible={showInterstitial} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.interstitialOverlay}>
+          <View style={styles.interstitialCard}>
+            <Text style={styles.interstitialAdLabel}>ADVERTISEMENT</Text>
+            <View style={styles.interstitialAdBox}>
+              <Feather name="tv" size={32} color={colors.mutedForeground} />
+              <Text style={styles.interstitialAdTitle}>Full-Screen Interstitial</Text>
+              <Text style={styles.interstitialAdDim}>300 × 250 Ad Placeholder</Text>
+            </View>
+            <View style={styles.interstitialDivider} />
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 14 }} />
+            <Text style={styles.interstitialLoadingText}>{simulateLabel}…</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1275,6 +1347,67 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     noneText: {
       fontSize: 12, color: colors.mutedForeground,
       fontFamily: "Inter_400Regular", fontStyle: "italic",
+    },
+
+    interstitialOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.84)",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 28,
+    },
+    interstitialCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 22,
+      width: "100%",
+      maxWidth: 360,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    interstitialAdLabel: {
+      fontSize: 9,
+      fontWeight: "700",
+      color: colors.mutedForeground + "80",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: 1.5,
+      textTransform: "uppercase",
+      marginBottom: 14,
+    },
+    interstitialAdBox: {
+      width: "100%",
+      height: 164,
+      backgroundColor: colors.secondary,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    interstitialAdTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.mutedForeground,
+      fontFamily: "Inter_700Bold",
+    },
+    interstitialAdDim: {
+      fontSize: 11,
+      color: colors.mutedForeground + "80",
+      fontFamily: "Inter_400Regular",
+    },
+    interstitialDivider: {
+      width: "100%",
+      height: 1,
+      backgroundColor: colors.border,
+      marginTop: 18,
+    },
+    interstitialLoadingText: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      fontFamily: "Inter_400Regular",
+      marginTop: 10,
     },
   });
 }

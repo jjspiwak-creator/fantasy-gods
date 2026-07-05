@@ -20,7 +20,7 @@ const LoginBody = z.object({
 
 const UpdateSettingsBody = z.object({
   showLeagueWarnings: z.boolean().optional(),
-  vibePreference: z.enum(["corporate", "the_boys"]).optional(),
+  vibePreference: z.enum(["corporate", "the_boys", "coach_speak", "vegas_degenerate"]).optional(),
 });
 
 function serializeUser(user: typeof usersTable.$inferSelect) {

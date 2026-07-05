@@ -16,6 +16,13 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSession } from "@/context/SessionContext";
 
+const SETTINGS_VIBE_OPTIONS = [
+  { key: "corporate" as const, label: "Corporate" },
+  { key: "the_boys" as const, label: "The Boys" },
+  { key: "coach_speak" as const, label: "Coach Talk" },
+  { key: "vegas_degenerate" as const, label: "Vegas" },
+];
+
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -150,33 +157,42 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Trade Preferences</Text>
 
-          {/* Vibe Mode toggle */}
-          <View style={[styles.statusCard, { alignItems: "center", marginBottom: 10 }]}>
-            <View style={[styles.accountIcon, { backgroundColor: vibePreference === "the_boys" ? colors.primary + "18" : colors.secondary }]}>
-              <Feather
-                name={vibePreference === "the_boys" ? "zap" : "bar-chart-2"}
-                size={16}
-                color={vibePreference === "the_boys" ? colors.primary : colors.mutedForeground}
-              />
+          {/* Vibe Mode 4-way selector */}
+          <View style={[styles.statusCard, styles.vibeCard]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <View style={[styles.accountIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Feather name="zap" size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.statusTitle}>Vibe Mode</Text>
+                <Text style={styles.statusDesc} numberOfLines={2}>
+                  {vibePreference === "corporate" && "Analytics-focused, data-driven copy"}
+                  {vibePreference === "the_boys" && "Casual fantasy banter for the group chat"}
+                  {vibePreference === "coach_speak" && "Intense football clichés and press-conference energy"}
+                  {vibePreference === "vegas_degenerate" && "Sports betting jargon — units, spreads, parlays"}
+                </Text>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.statusTitle}>Vibe Mode</Text>
-              <Text style={styles.statusDesc}>
-                {vibePreference === "the_boys"
-                  ? "the_boys — casual fantasy commentary"
-                  : "Corporate — analytics-focused copy"}
-              </Text>
+            <View style={styles.vibeChipRow}>
+              {SETTINGS_VIBE_OPTIONS.map((opt) => {
+                const isActive = vibePreference === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.vibeChip, isActive && styles.vibeChipActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setVibePreference(opt.key);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.vibeChipText, isActive && styles.vibeChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <Switch
-              value={vibePreference === "the_boys"}
-              onValueChange={(val) => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setVibePreference(val ? "the_boys" : "corporate");
-              }}
-              trackColor={{ false: colors.secondary, true: colors.primary + "80" }}
-              thumbColor={vibePreference === "the_boys" ? colors.primary : colors.mutedForeground}
-              ios_backgroundColor={colors.secondary}
-            />
           </View>
 
           {/* League Rule Warnings toggle */}
@@ -314,5 +330,24 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     gradeChip: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, minWidth: 42, alignItems: "center" },
     gradeChipText: { fontSize: 12, fontWeight: "700", fontFamily: "Inter_700Bold" },
     gradeRowLabel: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+
+    vibeCard: { flexDirection: "column", alignItems: "stretch", marginBottom: 10 },
+    vibeChipRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+    vibeChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+    },
+    vibeChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + "18" },
+    vibeChipText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.mutedForeground,
+      fontFamily: "Inter_700Bold",
+    },
+    vibeChipTextActive: { color: colors.primary },
   });
 }

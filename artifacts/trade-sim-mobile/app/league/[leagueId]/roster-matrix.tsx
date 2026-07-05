@@ -7,9 +7,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Alert,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useSession } from "@/context/SessionContext";
@@ -20,7 +23,18 @@ import { getGradeColor, getGradeBgColor, getGradeBorderColor } from "@/lib/utils
 const POSITIONS = ["QB", "RB", "WR", "TE"] as const;
 type Pos = (typeof POSITIONS)[number];
 
-const CELL_W = 56;
+const LOW_GRADES = new Set(["C", "C-", "D+", "D", "D-", "F"]);
+function isLowGrade(grade: string): boolean {
+  return LOW_GRADES.has(grade);
+}
+function affiliateCta(pos: Pos): string {
+  if (pos === "QB") return "QB Streamers";
+  if (pos === "RB") return "RB Props";
+  if (pos === "WR") return "WR Targets";
+  return "Draft Picks";
+}
+
+const CELL_W = 68;
 const TEAM_COL_W = 118;
 
 export default function RosterMatrixScreen() {
@@ -33,16 +47,30 @@ export default function RosterMatrixScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   // ── All vibe text at top level ──────────────────────────────────────────────
-  const headerTitle = useVibeText("Position Grades", "Grade Book");
+  const headerTitle = useVibeText(
+    "Position Grades",
+    "Grade Book",
+    "Position Film Grades",
+    "Positional Value Matrix",
+  );
   const headerSub = useVibeText(
     "A+ to F letter grade per position group vs league average VORP",
     "See who's stacked and who's cooked at every spot",
+    "Film study complete — here's how every unit grades out",
+    "Positional lines vs the league — where you're getting value",
   );
   const legendDesc = useVibeText(
     "Grades reflect percentage deviation from league-average VORP at each position.",
     "A+ means loaded, F means you need to make some calls.",
+    "Graded on effort, execution, and roster depth. No excuses.",
+    "A+ is an edge, F means you're giving away units at that spot.",
   );
-  const loadingText = useVibeText("Loading grade matrix…", "Grading everyone's rosters…");
+  const loadingText = useVibeText(
+    "Loading grade matrix…",
+    "Grading everyone's rosters…",
+    "Reviewing position film…",
+    "Calculating positional lines…",
+  );
 
   const { data: summary, isLoading, error } = useLeagueSummary(
     sessionId,
@@ -180,6 +208,20 @@ function TeamRow({
                 {pg.vsLeagueAvgPct.toFixed(0)}%
               </Text>
             </View>
+            {isLowGrade(pg.grade) && (
+              <TouchableOpacity
+                style={styles.affiliateBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  Linking.openURL("https://underdogfantasy.com").catch(() =>
+                    Alert.alert("Could not open link")
+                  );
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.affiliateBtnText}>{affiliateCta(pos)} →</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       })}
@@ -346,6 +388,25 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       color: colors.mutedForeground,
       fontFamily: "Inter_400Regular",
       lineHeight: 17,
+    },
+
+    affiliateBtn: {
+      marginTop: 4,
+      backgroundColor: colors.primary + "15",
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.primary + "45",
+      paddingHorizontal: 3,
+      paddingVertical: 3,
+      alignItems: "center",
+      width: 60,
+    },
+    affiliateBtnText: {
+      fontSize: 8,
+      fontWeight: "700",
+      color: colors.primary,
+      fontFamily: "Inter_700Bold",
+      textAlign: "center",
     },
   });
 }

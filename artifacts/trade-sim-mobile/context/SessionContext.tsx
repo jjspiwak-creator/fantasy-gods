@@ -6,7 +6,7 @@ export interface UserProfile {
   id: string;
   email: string;
   showLeagueWarnings: boolean;
-  vibePreference: "corporate" | "the_boys";
+  vibePreference: "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate";
   createdAt: string;
 }
 
@@ -32,8 +32,8 @@ interface SessionState {
   showLeagueWarnings: boolean;
   setShowLeagueWarnings: (show: boolean) => void;
   // Vibe preference (per-user or guest local)
-  vibePreference: "corporate" | "the_boys";
-  setVibePreference: (vibe: "corporate" | "the_boys") => void;
+  vibePreference: "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate";
+  setVibePreference: (vibe: "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate") => void;
   // Loaded flag
   isLoaded: boolean;
 }
@@ -58,7 +58,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [showLeagueWarnings, _setShowLeagueWarnings] = useState(true);
-  const [vibePreference, _setVibePreference] = useState<"corporate" | "the_boys">("corporate");
+  const [vibePreference, _setVibePreference] = useState<"corporate" | "the_boys" | "coach_speak" | "vegas_degenerate">("corporate");
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -82,8 +82,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (guestWarnings !== null) {
           _setShowLeagueWarnings(guestWarnings !== "false");
         }
-        if (guestVibe === "the_boys") {
-          _setVibePreference("the_boys");
+        const validVibes = ["corporate", "the_boys", "coach_speak", "vegas_degenerate"];
+        if (guestVibe && validVibes.includes(guestVibe)) {
+          _setVibePreference(guestVibe as "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate");
         }
       }
       setIsLoaded(true);
@@ -127,7 +128,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setVibePreference = (vibe: "corporate" | "the_boys") => {
+  const setVibePreference = (vibe: "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate") => {
     _setVibePreference(vibe);
     if (user) {
       const updated = { ...user, vibePreference: vibe };

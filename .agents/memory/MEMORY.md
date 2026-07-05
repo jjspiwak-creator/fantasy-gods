@@ -1,6 +1,7 @@
 - [API server Zod usage](api-server-zod.md) — api-server bundles with esbuild; use `z.string().email()` not `z.email()`, and zod must be a direct dep of api-server
-- [Vibe Mode architecture](vibe-mode.md) — vibePreference field and useVibeText hook pattern across web + mobile
+- [Vibe Mode architecture](vibe-mode.md) — 4 personalities (corporate/the_boys/coach_speak/vegas_degenerate); useVibeText optional 3rd/4th args fall back to theBoys so 2-arg call sites never break.
 - [Projection sync pipeline](projection-sync.md) — ESPN public kona_player_info endpoint, player_projections table, admin sync route pattern
 - [VORP analytics engine](vorp-analytics.md) — computeLeagueSummary() in analytics.ts, endpoint GET /api/metrics/league-summary
 - [Mobile _layout ErrorUtils](mobile-layout-errorutils.md) — ErrorUtils from react-native is undefined on web; never add global error handler in _layout.tsx without a native-only guard.
 - [useVibeText unconditional rule](vibe-text-rules.md) — all useVibeText calls must be at component top level; pass resulting strings as props to non-hook sub-components to avoid conditional-hook violations.
+- [Monetization placeholders](monetization-placeholders.md) — banner ad at dashboard bottom (regular View, not absolute), interstitial Modal in trade.tsx with exact 2s display via Date.now() delta on mutation success.

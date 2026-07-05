@@ -27,41 +27,63 @@ import { getGradeColor } from "@/lib/utils";
 
 type RankView = "weekly" | "ros";
 
+const VIBE_OPTIONS = [
+  { key: "corporate" as const, label: "Corporate", icon: "briefcase" as const },
+  { key: "the_boys" as const, label: "The Boys", icon: "users" as const },
+  { key: "coach_speak" as const, label: "Coach Talk", icon: "mic" as const },
+  { key: "vegas_degenerate" as const, label: "Vegas", icon: "trending-up" as const },
+];
+
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { sessionId } = useSession();
+  const { sessionId, vibePreference, setVibePreference } = useSession();
 
   const [view, setView] = useState<RankView>("weekly");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
 
   // ── All vibe text at top level (unconditional hooks) ─────────────────────
-  const headerTitle = useVibeText("League Intelligence", "Your Boys' Report Card");
+  const headerTitle = useVibeText(
+    "League Intelligence",
+    "Your Boys' Report Card",
+    "Game Film Review",
+    "Injury Report & Lines",
+  );
   const connectDescText = useVibeText(
     "Connect your ESPN account to see live power rankings and positional grades.",
     "Hook up your ESPN and we'll tell you exactly who's winning your league.",
+    "Get in the film room — connect your ESPN and we'll break down every squad.",
+    "Set the market — link ESPN and see who's got the line advantage this week.",
   );
-  const weeklyLabel = useVibeText("This Week", "Matchup View");
-  const rosLabel = useVibeText("Rest of Season", "Long Haul");
+  const weeklyLabel = useVibeText("This Week", "Matchup View", "Weekly Tape", "This Week's Lines");
+  const rosLabel = useVibeText("Rest of Season", "Long Haul", "Full Campaign", "ROS Futures");
   const weeklySubtitle = useVibeText(
     "Projected score from each team's optimal starting lineup",
     "Who's got the best squad on the field this week",
+    "We put the film on — here's who starts and what they're worth",
+    "Point spreads across your league — who's favored this slate",
   );
   const rosSubtitle = useVibeText(
     "Cumulative roster VORP — full team depth, starters + bench",
     "Who's built to win the rest of the way",
+    "Depth chart strength — who's got the guys to make a run",
+    "Futures value — who's worth backing through the stretch",
   );
   const loadingText = useVibeText(
     "Calculating power rankings…",
     "Figuring out who's cooked…",
+    "Pulling game film, coach…",
+    "Setting lines, hang tight…",
   );
   const errorText = useVibeText(
     "Could not load league data.",
     "ESPN's being weird. Give it a second.",
+    "Film room's locked. Get back on the field.",
+    "Book's dark right now. Check back shortly.",
   );
-  const gradesLabel = useVibeText("Position Grades", "Grade Book");
-  const avgLabel = useVibeText("League avg", "Avg manager");
+  const gradesLabel = useVibeText("Position Grades", "Grade Book", "Position Film", "Positional Value");
+  const avgLabel = useVibeText("League avg", "Avg manager", "League standard", "Closing line");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : 0;
@@ -154,6 +176,38 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* ── Vibe Mode picker ── */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.vibeChips}
+      >
+        {VIBE_OPTIONS.map((opt) => {
+          const isActive = vibePreference === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.vibeChip, isActive && styles.vibeChipActive]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setVibePreference(opt.key);
+              }}
+              activeOpacity={0.75}
+            >
+              <Feather
+                name={opt.icon}
+                size={11}
+                color={isActive ? colors.primary : colors.mutedForeground}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[styles.vibeChipText, isActive && styles.vibeChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {/* ── League chips (only when 2+ leagues) ── */}
       {(leagues?.length ?? 0) > 1 && (
@@ -270,6 +324,12 @@ export default function DashboardScreen() {
           })}
         </ScrollView>
       )}
+
+      {/* ── Persistent Banner Ad Placeholder ── */}
+      <View style={styles.bannerAd}>
+        <Text style={styles.bannerAdLabel}>Advertisement</Text>
+        <Text style={styles.bannerAdText}>Banner Ad — 320 × 50</Text>
+      </View>
     </View>
   );
 }
@@ -658,6 +718,60 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       height: 3,
       backgroundColor: colors.primary,
       borderRadius: 2,
+    },
+
+    vibeChips: {
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+    },
+    vibeChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+    },
+    vibeChipActive: {
+      borderColor: colors.primary + "80",
+      backgroundColor: colors.primary + "15",
+    },
+    vibeChipText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.mutedForeground,
+      fontFamily: "Inter_700Bold",
+    },
+    vibeChipTextActive: { color: colors.primary },
+
+    bannerAd: {
+      height: 52,
+      marginHorizontal: 12,
+      marginBottom: 10,
+      backgroundColor: colors.secondary,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 2,
+    },
+    bannerAdLabel: {
+      fontSize: 8,
+      fontWeight: "700",
+      color: colors.mutedForeground + "70",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: 1.5,
+      textTransform: "uppercase",
+    },
+    bannerAdText: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      fontFamily: "Inter_400Regular",
     },
   });
 }
