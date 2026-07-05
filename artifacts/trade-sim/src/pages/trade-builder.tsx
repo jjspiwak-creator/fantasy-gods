@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useLeagueTeams, useSimulateTradeMutation, useSaveTradeMutation } from "@/hooks/use-espn-api";
 import { useSession } from "@/hooks/use-session";
-import { useShowLeagueWarnings, useUpdateWarningsMutation } from "@/hooks/use-auth";
+import { useShowLeagueWarnings, useUpdateWarningsMutation, useVibePreference } from "@/hooks/use-auth";
+import { useVibeText } from "@/hooks/use-vibe-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerCard } from "@/components/player-card";
 import {
@@ -21,6 +22,11 @@ export function TradeBuilderPage() {
   const saveMutation = useSaveTradeMutation();
   const showLeagueWarnings = useShowLeagueWarnings();
   const updateWarnings = useUpdateWarningsMutation();
+  const vibePreference = useVibePreference();
+  const dismissBannerText = useVibeText(
+    "Suppress Rule Warnings",
+    "Tired of seeing this? Click to hide."
+  );
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
@@ -301,7 +307,7 @@ export function TradeBuilderPage() {
                   title="Hide league warning banners"
                 >
                   <BellOff className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Hide</span>
+                  <span className="hidden sm:inline">{dismissBannerText}</span>
                 </button>
               </div>
             </div>
@@ -317,6 +323,19 @@ export function TradeBuilderPage() {
               />
             ))}
           </div>
+
+          {/* Community card — the_boys mode only */}
+          {vibePreference === "the_boys" && (
+            <div className="rounded-2xl border border-[#08d4f0]/20 bg-[#08d4f0]/5 px-6 py-5 flex items-start gap-4">
+              <div className="shrink-0 w-9 h-9 rounded-full bg-[#08d4f0]/15 flex items-center justify-center mt-0.5">
+                <span className="text-lg">🏈</span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                <span className="font-semibold text-foreground">Thank you for being part of the movement.</span>{" "}
+                If this app saved your season, tell your friends—we need more numbers!
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

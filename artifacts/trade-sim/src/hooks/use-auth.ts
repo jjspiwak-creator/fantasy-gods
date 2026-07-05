@@ -12,6 +12,7 @@ export interface UserProfile {
   id: string;
   email: string;
   showLeagueWarnings: boolean;
+  vibePreference: "corporate" | "the_boys";
   createdAt: string;
 }
 
@@ -20,10 +21,14 @@ interface AuthState {
   user: UserProfile | null;
   /** For guests: local override of the league warnings preference */
   guestShowWarnings: boolean;
+  /** For guests: local override of the vibe preference */
+  guestVibePreference: "corporate" | "the_boys";
   setAuth: (token: string, user: UserProfile) => void;
   clearAuth: () => void;
   setShowLeagueWarnings: (show: boolean) => void;
   setGuestShowWarnings: (show: boolean) => void;
+  setVibePreference: (vibe: "corporate" | "the_boys") => void;
+  setGuestVibePreference: (vibe: "corporate" | "the_boys") => void;
 }
 
 export const useAuth = create<AuthState>()(
@@ -32,6 +37,7 @@ export const useAuth = create<AuthState>()(
       token: null,
       user: null,
       guestShowWarnings: true,
+      guestVibePreference: "corporate",
       setAuth: (token, user) => set({ token, user }),
       clearAuth: () => set({ token: null, user: null }),
       setShowLeagueWarnings: (show) =>
@@ -39,6 +45,11 @@ export const useAuth = create<AuthState>()(
           user: s.user ? { ...s.user, showLeagueWarnings: show } : null,
         })),
       setGuestShowWarnings: (show) => set({ guestShowWarnings: show }),
+      setVibePreference: (vibe) =>
+        set((s) => ({
+          user: s.user ? { ...s.user, vibePreference: vibe } : null,
+        })),
+      setGuestVibePreference: (vibe) => set({ guestVibePreference: vibe }),
     }),
     { name: "tradesim-auth" }
   )
@@ -48,6 +59,13 @@ export const useAuth = create<AuthState>()(
 export function useShowLeagueWarnings(): boolean {
   return useAuth((s) =>
     s.user ? s.user.showLeagueWarnings : s.guestShowWarnings
+  );
+}
+
+/** The active vibe preference for the current user (logged in or guest). */
+export function useVibePreference(): "corporate" | "the_boys" {
+  return useAuth((s) =>
+    s.user ? s.user.vibePreference : s.guestVibePreference
   );
 }
 
@@ -110,7 +128,6 @@ export function useUpdateWarningsMutation() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
-      // Guest — resolve immediately with a dummy value
       return Promise.resolve({ showLeagueWarnings: show } as any);
     },
     onSuccess: (_data, show) => {
@@ -125,6 +142,39 @@ export function useUpdateWarningsMutation() {
           description: "Turn it back on in Settings anytime.",
         });
       }
+    },
+  });
+}
+
+export function useUpdateVibeMutation() {
+  const { toast } = useToast();
+  const token = useAuth((s) => s.token);
+  const setVibePreference = useAuth((s) => s.setVibePreference);
+  const setGuestVibePreference = useAuth((s) => s.setGuestVibePreference);
+
+  return useMutation({
+    mutationFn: (vibe: "corporate" | "the_boys") => {
+      if (token) {
+        return updateUserSettings(
+          { vibePreference: vibe },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+      return Promise.resolve({ vibePreference: vibe } as any);
+    },
+    onSuccess: (_data, vibe) => {
+      if (token) {
+        setVibePreference(vibe);
+      } else {
+        setGuestVibePreference(vibe);
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Could not save preference",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 }

@@ -7,6 +7,7 @@ export const usersTable = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   showLeagueWarnings: boolean("show_league_warnings").notNull().default(true),
+  vibePreference: text("vibe_preference").notNull().default("corporate"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

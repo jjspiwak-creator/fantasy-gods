@@ -5,6 +5,7 @@
  * ESPN Fantasy Football Trade Simulator API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserProfileVibePreference } from "./userProfileVibePreference";
 
 /**
  * Logged-in user account details
@@ -14,6 +15,8 @@ export interface UserProfile {
   email: string;
   /** Whether to show the Soft Warning Sandbox banner on the results screen */
   showLeagueWarnings: boolean;
+  /** UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy */
+  vibePreference: UserProfileVibePreference;
   /** ISO timestamp */
   createdAt: string;
 }

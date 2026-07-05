@@ -5,8 +5,14 @@
  * ESPN Fantasy Football Trade Simulator API
  * OpenAPI spec version: 0.1.0
  */
+import type { UpdateSettingsBodyVibePreference } from "./updateSettingsBodyVibePreference";
 
+/**
+ * All fields are optional — send only the ones you want to change
+ */
 export interface UpdateSettingsBody {
   /** Set to false to hide the Soft Warning Sandbox banner permanently */
-  showLeagueWarnings: boolean;
+  showLeagueWarnings?: boolean;
+  /** UI tone preference */
+  vibePreference?: UpdateSettingsBodyVibePreference;
 }

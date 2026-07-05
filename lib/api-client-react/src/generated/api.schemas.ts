@@ -135,6 +135,17 @@ export interface TradeSimulationResult {
 }
 
 /**
+ * UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy
+ */
+export type UserProfileVibePreference =
+  (typeof UserProfileVibePreference)[keyof typeof UserProfileVibePreference];
+
+export const UserProfileVibePreference = {
+  corporate: "corporate",
+  the_boys: "the_boys",
+} as const;
+
+/**
  * Logged-in user account details
  */
 export interface UserProfile {
@@ -142,6 +153,8 @@ export interface UserProfile {
   email: string;
   /** Whether to show the Soft Warning Sandbox banner on the results screen */
   showLeagueWarnings: boolean;
+  /** UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy */
+  vibePreference: UserProfileVibePreference;
   /** ISO timestamp */
   createdAt: string;
 }
@@ -166,9 +179,25 @@ export interface LoginBody {
   password: string;
 }
 
+/**
+ * UI tone preference
+ */
+export type UpdateSettingsBodyVibePreference =
+  (typeof UpdateSettingsBodyVibePreference)[keyof typeof UpdateSettingsBodyVibePreference];
+
+export const UpdateSettingsBodyVibePreference = {
+  corporate: "corporate",
+  the_boys: "the_boys",
+} as const;
+
+/**
+ * All fields are optional — send only the ones you want to change
+ */
 export interface UpdateSettingsBody {
   /** Set to false to hide the Soft Warning Sandbox banner permanently */
-  showLeagueWarnings: boolean;
+  showLeagueWarnings?: boolean;
+  /** UI tone preference */
+  vibePreference?: UpdateSettingsBodyVibePreference;
 }
 
 export interface SaveTradeBody {

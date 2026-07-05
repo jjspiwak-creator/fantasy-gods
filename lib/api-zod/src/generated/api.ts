@@ -687,6 +687,11 @@ export const RegisterUserResponse = zod.object({
         .describe(
           "Whether to show the Soft Warning Sandbox banner on the results screen",
         ),
+      vibePreference: zod
+        .enum(["corporate", "the_boys"])
+        .describe(
+          "UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy",
+        ),
       createdAt: zod.string().describe("ISO timestamp"),
     })
     .describe("Logged-in user account details"),
@@ -715,6 +720,11 @@ export const LoginUserResponse = zod.object({
         .describe(
           "Whether to show the Soft Warning Sandbox banner on the results screen",
         ),
+      vibePreference: zod
+        .enum(["corporate", "the_boys"])
+        .describe(
+          "UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy",
+        ),
       createdAt: zod.string().describe("ISO timestamp"),
     })
     .describe("Logged-in user account details"),
@@ -732,6 +742,11 @@ export const GetMeResponse = zod
       .describe(
         "Whether to show the Soft Warning Sandbox banner on the results screen",
       ),
+    vibePreference: zod
+      .enum(["corporate", "the_boys"])
+      .describe(
+        "UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy",
+      ),
     createdAt: zod.string().describe("ISO timestamp"),
   })
   .describe("Logged-in user account details");
@@ -739,13 +754,20 @@ export const GetMeResponse = zod
 /**
  * @summary Update user preferences (e.g. league warning visibility)
  */
-export const UpdateUserSettingsBody = zod.object({
-  showLeagueWarnings: zod
-    .boolean()
-    .describe(
-      "Set to false to hide the Soft Warning Sandbox banner permanently",
-    ),
-});
+export const UpdateUserSettingsBody = zod
+  .object({
+    showLeagueWarnings: zod
+      .boolean()
+      .optional()
+      .describe(
+        "Set to false to hide the Soft Warning Sandbox banner permanently",
+      ),
+    vibePreference: zod
+      .enum(["corporate", "the_boys"])
+      .optional()
+      .describe("UI tone preference"),
+  })
+  .describe("All fields are optional — send only the ones you want to change");
 
 export const UpdateUserSettingsResponse = zod
   .object({
@@ -755,6 +777,11 @@ export const UpdateUserSettingsResponse = zod
       .boolean()
       .describe(
         "Whether to show the Soft Warning Sandbox banner on the results screen",
+      ),
+    vibePreference: zod
+      .enum(["corporate", "the_boys"])
+      .describe(
+        "UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy",
       ),
     createdAt: zod.string().describe("ISO timestamp"),
   })

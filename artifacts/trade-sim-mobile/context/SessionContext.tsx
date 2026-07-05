@@ -6,6 +6,7 @@ export interface UserProfile {
   id: string;
   email: string;
   showLeagueWarnings: boolean;
+  vibePreference: "corporate" | "the_boys";
   createdAt: string;
 }
 
@@ -14,6 +15,7 @@ const SESSION_KEY = "tradesim_session_id";
 const AUTH_TOKEN_KEY = "tradesim_auth_token";
 const AUTH_USER_KEY = "tradesim_auth_user";
 const GUEST_WARNINGS_KEY = "tradesim_guest_warnings";
+const GUEST_VIBE_KEY = "tradesim_guest_vibe";
 
 // ─── Context shape ───────────────────────────────────────────────────────────
 interface SessionState {
@@ -29,6 +31,9 @@ interface SessionState {
   // League warning preference (per-user or guest local)
   showLeagueWarnings: boolean;
   setShowLeagueWarnings: (show: boolean) => void;
+  // Vibe preference (per-user or guest local)
+  vibePreference: "corporate" | "the_boys";
+  setVibePreference: (vibe: "corporate" | "the_boys") => void;
   // Loaded flag
   isLoaded: boolean;
 }
@@ -43,6 +48,8 @@ const SessionContext = createContext<SessionState>({
   clearAuth: () => {},
   showLeagueWarnings: true,
   setShowLeagueWarnings: () => {},
+  vibePreference: "corporate",
+  setVibePreference: () => {},
   isLoaded: false,
 });
 
@@ -51,6 +58,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [showLeagueWarnings, _setShowLeagueWarnings] = useState(true);
+  const [vibePreference, _setVibePreference] = useState<"corporate" | "the_boys">("corporate");
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -59,7 +67,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       AsyncStorage.getItem(AUTH_TOKEN_KEY),
       AsyncStorage.getItem(AUTH_USER_KEY),
       AsyncStorage.getItem(GUEST_WARNINGS_KEY),
-    ]).then(([sid, token, userStr, guestWarnings]) => {
+      AsyncStorage.getItem(GUEST_VIBE_KEY),
+    ]).then(([sid, token, userStr, guestWarnings, guestVibe]) => {
       if (sid) setSessionId(sid);
       if (token) setAuthToken(token);
       if (userStr) {
@@ -67,9 +76,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           const parsed = JSON.parse(userStr) as UserProfile;
           setUser(parsed);
           _setShowLeagueWarnings(parsed.showLeagueWarnings);
+          _setVibePreference(parsed.vibePreference ?? "corporate");
         } catch {}
-      } else if (guestWarnings !== null) {
-        _setShowLeagueWarnings(guestWarnings !== "false");
+      } else {
+        if (guestWarnings !== null) {
+          _setShowLeagueWarnings(guestWarnings !== "false");
+        }
+        if (guestVibe === "the_boys") {
+          _setVibePreference("the_boys");
+        }
       }
       setIsLoaded(true);
     });
@@ -89,6 +104,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAuthToken(token);
     setUser(profile);
     _setShowLeagueWarnings(profile.showLeagueWarnings);
+    _setVibePreference(profile.vibePreference ?? "corporate");
     AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
     AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(profile));
   };
@@ -111,6 +127,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setVibePreference = (vibe: "corporate" | "the_boys") => {
+    _setVibePreference(vibe);
+    if (user) {
+      const updated = { ...user, vibePreference: vibe };
+      setUser(updated);
+      AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
+    } else {
+      AsyncStorage.setItem(GUEST_VIBE_KEY, vibe);
+    }
+  };
+
   return (
     <SessionContext.Provider
       value={{
@@ -123,6 +150,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         clearAuth,
         showLeagueWarnings,
         setShowLeagueWarnings,
+        vibePreference,
+        setVibePreference,
         isLoaded,
       }}
     >

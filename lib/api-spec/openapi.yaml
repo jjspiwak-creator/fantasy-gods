@@ -683,6 +683,12 @@ components:
         showLeagueWarnings:
           type: boolean
           description: Whether to show the Soft Warning Sandbox banner on the results screen
+        vibePreference:
+          type: string
+          enum:
+            - corporate
+            - the_boys
+          description: UI tone preference — 'corporate' for analytics-focused copy, 'the_boys' for casual fantasy copy
         createdAt:
           type: string
           description: ISO timestamp
@@ -690,6 +696,7 @@ components:
         - id
         - email
         - showLeagueWarnings
+        - vibePreference
         - createdAt
 
     AuthToken:
@@ -732,12 +739,17 @@ components:
 
     UpdateSettingsBody:
       type: object
+      description: All fields are optional — send only the ones you want to change
       properties:
         showLeagueWarnings:
           type: boolean
           description: Set to false to hide the Soft Warning Sandbox banner permanently
-      required:
-        - showLeagueWarnings
+        vibePreference:
+          type: string
+          enum:
+            - corporate
+            - the_boys
+          description: UI tone preference
 
     SaveTradeBody:
       type: object

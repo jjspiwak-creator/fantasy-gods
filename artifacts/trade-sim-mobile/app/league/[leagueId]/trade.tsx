@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSession } from "@/context/SessionContext";
+import { useVibeText } from "@/hooks/useVibeText";
 import {
   useGetLeagueTeams,
   useSimulateTrade,
@@ -37,7 +38,11 @@ export default function TradeBuilderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
-  const { sessionId, authToken, showLeagueWarnings, setShowLeagueWarnings } = useSession();
+  const { sessionId, authToken, showLeagueWarnings, setShowLeagueWarnings, vibePreference } = useSession();
+  const dismissBannerText = useVibeText(
+    "Suppress Rule Warnings",
+    "Tired of seeing this? Click to hide."
+  );
   const queryClient = useQueryClient();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -408,10 +413,13 @@ export default function TradeBuilderScreen() {
                 </View>
                 <TouchableOpacity
                   onPress={() => setShowLeagueWarnings(false)}
-                  style={{ padding: 4 }}
+                  style={{ padding: 4, flexDirection: "row", alignItems: "center", gap: 4 }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Feather name="bell-off" size={14} color={colors.mutedForeground} />
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                    {dismissBannerText}
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -425,6 +433,26 @@ export default function TradeBuilderScreen() {
                 styles={styles}
               />
             ))}
+
+            {/* Community card — the_boys mode only */}
+            {vibePreference === "the_boys" && (
+              <View style={{
+                marginTop: 8, marginBottom: 16,
+                borderRadius: 14, borderWidth: 1,
+                borderColor: "#08d4f020", backgroundColor: "#08d4f00d",
+                padding: 16, flexDirection: "row", gap: 12, alignItems: "flex-start",
+              }}>
+                <Text style={{ fontSize: 22 }}>🏈</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", marginBottom: 3 }}>
+                    Thank you for being part of the movement.
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", lineHeight: 18 }}>
+                    If this app saved your season, tell your friends—we need more numbers!
+                  </Text>
+                </View>
+              </View>
+            )}
           </ScrollView>
         </View>
       )}

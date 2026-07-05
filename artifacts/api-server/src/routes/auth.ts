@@ -18,7 +18,8 @@ const LoginBody = z.object({
 });
 
 const UpdateSettingsBody = z.object({
-  showLeagueWarnings: z.boolean(),
+  showLeagueWarnings: z.boolean().optional(),
+  vibePreference: z.enum(["corporate", "the_boys"]).optional(),
 });
 
 function serializeUser(user: typeof usersTable.$inferSelect) {
@@ -26,6 +27,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     id: user.id,
     email: user.email,
     showLeagueWarnings: user.showLeagueWarnings,
+    vibePreference: user.vibePreference as "corporate" | "the_boys",
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -143,10 +145,19 @@ router.patch("/auth/settings", async (req, res): Promise<void> => {
     return;
   }
 
+  const updates: Partial<{ showLeagueWarnings: boolean; vibePreference: string }> = {};
+  if (parsed.data.showLeagueWarnings !== undefined) updates.showLeagueWarnings = parsed.data.showLeagueWarnings;
+  if (parsed.data.vibePreference !== undefined) updates.vibePreference = parsed.data.vibePreference;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No settings provided to update." });
+    return;
+  }
+
   try {
     const [user] = await db
       .update(usersTable)
-      .set({ showLeagueWarnings: parsed.data.showLeagueWarnings })
+      .set(updates)
       .where(eq(usersTable.id, payload.userId))
       .returning();
 

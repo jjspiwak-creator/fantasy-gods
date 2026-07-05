@@ -28,4 +28,6 @@ export * from "./team";
 export * from "./teamTradeResult";
 export * from "./tradeSimulationResult";
 export * from "./updateSettingsBody";
+export * from "./updateSettingsBodyVibePreference";
 export * from "./userProfile";
+export * from "./userProfileVibePreference";
