@@ -2,3 +2,5 @@
 - [Vibe Mode architecture](vibe-mode.md) — vibePreference field and useVibeText hook pattern across web + mobile
 - [Projection sync pipeline](projection-sync.md) — ESPN public kona_player_info endpoint, player_projections table, admin sync route pattern
 - [VORP analytics engine](vorp-analytics.md) — computeLeagueSummary() in analytics.ts, endpoint GET /api/metrics/league-summary
+- [Mobile _layout ErrorUtils](mobile-layout-errorutils.md) — ErrorUtils from react-native is undefined on web; never add global error handler in _layout.tsx without a native-only guard.
+- [useVibeText unconditional rule](vibe-text-rules.md) — all useVibeText calls must be at component top level; pass resulting strings as props to non-hook sub-components to avoid conditional-hook violations.

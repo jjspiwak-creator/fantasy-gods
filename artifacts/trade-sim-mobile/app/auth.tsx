@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSession } from "@/context/SessionContext";
+import { useVibeText } from "@/hooks/useVibeText";
 
 type Mode = "welcome" | "login" | "register";
 
@@ -36,6 +37,27 @@ export default function AuthScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+
+  // ── All vibe text at component top level ─────────────────────────────────
+  const taglineText = useVibeText(
+    "Fantasy football trade analyzer\nfor serious managers",
+    "Stop getting fleeced.\nKnow before you deal.",
+  );
+  const feature1Desc = useVibeText(
+    "Simulate blockbuster multi-team deals",
+    "Orchestrate the trades your league will never forget",
+  );
+  const feature2Desc = useVibeText(
+    "A+–F grades with real ESPN values",
+    "Instant grades so you know if you're getting played",
+  );
+  const feature3Desc = useVibeText(
+    "Revisit and refresh past analyses",
+    "Go back and see if that trade aged like milk",
+  );
+  const guestLabel = useVibeText("Continue as Guest", "Just wanna browse");
+  const createAccountLabel = useVibeText("Create Free Account", "Lock In My Account");
+  const signInLabel = useVibeText("Sign In", "I'm Back");
 
   const styles = makeStyles(colors);
 
@@ -131,6 +153,13 @@ export default function AuthScreen() {
             <WelcomeView
               colors={colors}
               styles={styles}
+              taglineText={taglineText}
+              feature1Desc={feature1Desc}
+              feature2Desc={feature2Desc}
+              feature3Desc={feature3Desc}
+              guestLabel={guestLabel}
+              createAccountLabel={createAccountLabel}
+              signInLabel={signInLabel}
               onLogin={() => { setError(""); setMode("login"); }}
               onRegister={() => { setError(""); setMode("register"); }}
               onGuest={handleContinueGuest}
@@ -159,7 +188,31 @@ export default function AuthScreen() {
   );
 }
 
-function WelcomeView({ colors, styles, onLogin, onRegister, onGuest }: any) {
+function WelcomeView({
+  colors, styles,
+  taglineText, feature1Desc, feature2Desc, feature3Desc,
+  guestLabel, createAccountLabel, signInLabel,
+  onLogin, onRegister, onGuest,
+}: {
+  colors: ReturnType<typeof useColors>;
+  styles: ReturnType<typeof makeStyles>;
+  taglineText: string;
+  feature1Desc: string;
+  feature2Desc: string;
+  feature3Desc: string;
+  guestLabel: string;
+  createAccountLabel: string;
+  signInLabel: string;
+  onLogin: () => void;
+  onRegister: () => void;
+  onGuest: () => void;
+}) {
+  const features = [
+    { icon: "users",       label: "3+ Team Trades",  desc: feature1Desc },
+    { icon: "bar-chart-2", label: "Live Grades",      desc: feature2Desc },
+    { icon: "save",        label: "Save Trades",      desc: feature3Desc },
+  ];
+
   return (
     <View style={styles.welcomeContent}>
       <View style={styles.logoWrap}>
@@ -167,20 +220,19 @@ function WelcomeView({ colors, styles, onLogin, onRegister, onGuest }: any) {
           <Feather name="shuffle" size={36} color={colors.primary} />
         </View>
         <Text style={styles.appName}>TradeSim</Text>
-        <Text style={styles.tagline}>Fantasy football trade analyzer{"\n"}for serious managers</Text>
+        <Text style={styles.tagline}>{taglineText}</Text>
       </View>
 
       <View style={styles.featureList}>
-        {[
-          { icon: "users", label: "3+ team trades", desc: "Simulate blockbuster multi-team deals" },
-          { icon: "bar-chart-2", label: "Live grades", desc: "A+–F grades with real ESPN values" },
-          { icon: "save", label: "Save trades", desc: "Revisit and refresh past analyses" },
-        ].map((f) => (
-          <View key={f.label} style={[styles.featureRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {features.map((f) => (
+          <View
+            key={f.label}
+            style={[styles.featureRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
             <View style={[styles.featureIcon, { backgroundColor: colors.primary + "15" }]}>
               <Feather name={f.icon as any} size={18} color={colors.primary} />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.featureLabel}>{f.label}</Text>
               <Text style={styles.featureDesc}>{f.desc}</Text>
             </View>
@@ -189,14 +241,22 @@ function WelcomeView({ colors, styles, onLogin, onRegister, onGuest }: any) {
       </View>
 
       <View style={styles.ctas}>
-        <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary }]} onPress={onRegister} activeOpacity={0.85}>
-          <Text style={[styles.btnText, { color: colors.primaryForeground }]}>Create Free Account</Text>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: colors.primary }]}
+          onPress={onRegister}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.btnText, { color: colors.primaryForeground }]}>{createAccountLabel}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]} onPress={onLogin} activeOpacity={0.85}>
-          <Text style={[styles.btnText, { color: colors.foreground }]}>Sign In</Text>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
+          onPress={onLogin}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.btnText, { color: colors.foreground }]}>{signInLabel}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onGuest} activeOpacity={0.7} style={styles.guestBtn}>
-          <Text style={styles.guestText}>Continue as Guest</Text>
+          <Text style={styles.guestText}>{guestLabel}</Text>
           <Feather name="arrow-right" size={13} color={colors.mutedForeground} />
         </TouchableOpacity>
       </View>
@@ -204,12 +264,22 @@ function WelcomeView({ colors, styles, onLogin, onRegister, onGuest }: any) {
   );
 }
 
-function FormView({ colors, styles, mode, email, setEmail, password, setPassword, confirmPassword, setConfirmPassword, showPass, setShowPass, loading, error, onSubmit, onSwitchMode }: any) {
+function FormView({
+  colors, styles, mode,
+  email, setEmail, password, setPassword,
+  confirmPassword, setConfirmPassword,
+  showPass, setShowPass,
+  loading, error, onSubmit, onSwitchMode,
+}: any) {
   const isRegister = mode === "register";
   return (
     <View style={styles.formContent}>
       <Text style={styles.formTitle}>{isRegister ? "Create Account" : "Welcome back"}</Text>
-      <Text style={styles.formSubtitle}>{isRegister ? "Save trades across devices and browsers." : "Sign in to access your saved trades."}</Text>
+      <Text style={styles.formSubtitle}>
+        {isRegister
+          ? "Save trades across devices and browsers."
+          : "Sign in to access your saved trades."}
+      </Text>
 
       <View style={styles.fieldWrap}>
         <Text style={styles.fieldLabel}>Email</Text>
@@ -227,7 +297,9 @@ function FormView({ colors, styles, mode, email, setEmail, password, setPassword
       </View>
 
       <View style={styles.fieldWrap}>
-        <Text style={styles.fieldLabel}>Password {isRegister && <Text style={styles.fieldHint}>(8+ characters)</Text>}</Text>
+        <Text style={styles.fieldLabel}>
+          Password{isRegister && <Text style={styles.fieldHint}> (8+ characters)</Text>}
+        </Text>
         <View style={[styles.passwordWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <TextInput
             style={[styles.passwordInput, { color: colors.foreground }]}
@@ -274,7 +346,9 @@ function FormView({ colors, styles, mode, email, setEmail, password, setPassword
       >
         {loading
           ? <ActivityIndicator color={colors.primaryForeground} size="small" />
-          : <Text style={[styles.btnText, { color: colors.primaryForeground }]}>{isRegister ? "Create Account" : "Sign In"}</Text>
+          : <Text style={[styles.btnText, { color: colors.primaryForeground }]}>
+              {isRegister ? "Create Account" : "Sign In"}
+            </Text>
         }
       </TouchableOpacity>
 
@@ -298,30 +372,70 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     scroll: { paddingHorizontal: 24, paddingTop: 8 },
     welcomeContent: { gap: 32 },
     logoWrap: { alignItems: "center", gap: 12, paddingTop: 16 },
-    logoCircle: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
-    appName: { fontSize: 30, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    tagline: { fontSize: 15, color: colors.mutedForeground, textAlign: "center", fontFamily: "Inter_400Regular", lineHeight: 22 },
+    logoCircle: {
+      width: 80, height: 80, borderRadius: 40,
+      alignItems: "center", justifyContent: "center",
+    },
+    appName: {
+      fontSize: 30, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold",
+    },
+    tagline: {
+      fontSize: 15, color: colors.mutedForeground,
+      textAlign: "center", fontFamily: "Inter_400Regular", lineHeight: 22,
+    },
     featureList: { gap: 10 },
-    featureRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: colors.radius, borderWidth: 1 },
-    featureIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-    featureLabel: { fontSize: 14, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
-    featureDesc: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 1 },
+    featureRow: {
+      flexDirection: "row", alignItems: "center", gap: 14,
+      padding: 14, borderRadius: colors.radius, borderWidth: 1,
+    },
+    featureIcon: {
+      width: 40, height: 40, borderRadius: 20,
+      alignItems: "center", justifyContent: "center",
+    },
+    featureLabel: {
+      fontSize: 14, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold",
+    },
+    featureDesc: {
+      fontSize: 12, color: colors.mutedForeground,
+      fontFamily: "Inter_400Regular", marginTop: 1,
+    },
     ctas: { gap: 12 },
-    btn: { height: 52, borderRadius: colors.radius, alignItems: "center", justifyContent: "center" },
+    btn: {
+      height: 52, borderRadius: colors.radius, alignItems: "center", justifyContent: "center",
+    },
     btnText: { fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
-    guestBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 4 },
+    guestBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 4, paddingVertical: 4,
+    },
     guestText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     formContent: { gap: 20, paddingTop: 8 },
     formTitle: { fontSize: 26, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    formSubtitle: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: -8 },
+    formSubtitle: {
+      fontSize: 14, color: colors.mutedForeground,
+      fontFamily: "Inter_400Regular", marginTop: -8,
+    },
     fieldWrap: { gap: 6 },
-    fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
-    fieldHint: { fontSize: 12, fontWeight: "400", color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    input: { height: 48, borderRadius: colors.radius, borderWidth: 1, paddingHorizontal: 14, fontSize: 15, fontFamily: "Inter_400Regular" },
-    passwordWrap: { flexDirection: "row", alignItems: "center", borderRadius: colors.radius, borderWidth: 1, paddingHorizontal: 14 },
+    fieldLabel: {
+      fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold",
+    },
+    fieldHint: {
+      fontSize: 12, fontWeight: "400", color: colors.mutedForeground, fontFamily: "Inter_400Regular",
+    },
+    input: {
+      height: 48, borderRadius: colors.radius, borderWidth: 1,
+      paddingHorizontal: 14, fontSize: 15, fontFamily: "Inter_400Regular",
+    },
+    passwordWrap: {
+      flexDirection: "row", alignItems: "center",
+      borderRadius: colors.radius, borderWidth: 1, paddingHorizontal: 14,
+    },
     passwordInput: { flex: 1, height: 48, fontSize: 15, fontFamily: "Inter_400Regular" },
     eyeBtn: { padding: 6 },
-    errorBanner: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: colors.radius, borderWidth: 1 },
+    errorBanner: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      padding: 12, borderRadius: colors.radius, borderWidth: 1,
+    },
     errorText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
     switchBtn: { alignItems: "center", paddingVertical: 4 },
     switchText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
