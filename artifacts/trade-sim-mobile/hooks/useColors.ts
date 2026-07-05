@@ -1,5 +1,9 @@
+import { useContext } from "react";
+import { SessionContext } from "@/context/SessionContext";
 import colors from "@/constants/colors";
 
 export function useColors() {
-  return { ...colors.dark, radius: colors.radius };
+  const { themePreference } = useContext(SessionContext);
+  const theme = themePreference ?? "dark";
+  return { ...colors[theme], radius: colors.radius };
 }

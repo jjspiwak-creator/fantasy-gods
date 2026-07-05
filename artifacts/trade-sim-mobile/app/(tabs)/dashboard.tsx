@@ -34,11 +34,17 @@ const VIBE_OPTIONS = [
   { key: "vegas_degenerate" as const, label: "Vegas", icon: "trending-up" as const },
 ];
 
+const THEME_OPTIONS = [
+  { key: "dark" as const, label: "Dark", icon: "moon" as const },
+  { key: "light" as const, label: "Light", icon: "sun" as const },
+  { key: "field" as const, label: "Field", icon: "align-justify" as const },
+];
+
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { sessionId, vibePreference, setVibePreference } = useSession();
+  const { sessionId, vibePreference, setVibePreference, themePreference, setThemePreference } = useSession();
 
   const [view, setView] = useState<RankView>("weekly");
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
@@ -208,6 +214,35 @@ export default function DashboardScreen() {
           );
         })}
       </ScrollView>
+
+      {/* ── Theme selector ── */}
+      <View style={styles.themePicker}>
+        <Text style={styles.themePickerLabel}>Theme</Text>
+        {THEME_OPTIONS.map((opt) => {
+          const isActive = themePreference === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.themeChip, isActive && styles.themeChipActive]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setThemePreference(opt.key);
+              }}
+              activeOpacity={0.75}
+            >
+              <Feather
+                name={opt.icon}
+                size={11}
+                color={isActive ? colors.primary : colors.mutedForeground}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[styles.themeChipText, isActive && styles.themeChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       {/* ── League chips (only when 2+ leagues) ── */}
       {(leagues?.length ?? 0) > 1 && (
@@ -747,6 +782,44 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontFamily: "Inter_700Bold",
     },
     vibeChipTextActive: { color: colors.primary },
+
+    themePicker: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingBottom: 10,
+    },
+    themePickerLabel: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: colors.mutedForeground + "99",
+      fontFamily: "Inter_700Bold",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginRight: 2,
+    },
+    themeChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+    },
+    themeChipActive: {
+      borderColor: colors.primary + "80",
+      backgroundColor: colors.primary + "15",
+    },
+    themeChipText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.mutedForeground,
+      fontFamily: "Inter_700Bold",
+    },
+    themeChipTextActive: { color: colors.primary },
 
     bannerAd: {
       height: 52,

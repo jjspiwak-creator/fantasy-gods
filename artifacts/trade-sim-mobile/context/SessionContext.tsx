@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { ThemeKey } from "@/constants/colors";
 
 // ─── Auth / User types ──────────────────────────────────────────────────────
 export interface UserProfile {
@@ -16,6 +17,7 @@ const AUTH_TOKEN_KEY = "tradesim_auth_token";
 const AUTH_USER_KEY = "tradesim_auth_user";
 const GUEST_WARNINGS_KEY = "tradesim_guest_warnings";
 const GUEST_VIBE_KEY = "tradesim_guest_vibe";
+const GUEST_THEME_KEY = "tradesim_guest_theme";
 
 // ─── Context shape ───────────────────────────────────────────────────────────
 interface SessionState {
@@ -34,11 +36,14 @@ interface SessionState {
   // Vibe preference (per-user or guest local)
   vibePreference: "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate";
   setVibePreference: (vibe: "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate") => void;
+  // Visual theme (always guest-local — not synced to server)
+  themePreference: ThemeKey;
+  setThemePreference: (theme: ThemeKey) => void;
   // Loaded flag
   isLoaded: boolean;
 }
 
-const SessionContext = createContext<SessionState>({
+export const SessionContext = createContext<SessionState>({
   sessionId: null,
   setSession: () => {},
   clearSession: () => {},
@@ -50,6 +55,8 @@ const SessionContext = createContext<SessionState>({
   setShowLeagueWarnings: () => {},
   vibePreference: "corporate",
   setVibePreference: () => {},
+  themePreference: "dark",
+  setThemePreference: () => {},
   isLoaded: false,
 });
 
@@ -59,6 +66,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [showLeagueWarnings, _setShowLeagueWarnings] = useState(true);
   const [vibePreference, _setVibePreference] = useState<"corporate" | "the_boys" | "coach_speak" | "vegas_degenerate">("corporate");
+  const [themePreference, _setThemePreference] = useState<ThemeKey>("dark");
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -68,7 +76,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       AsyncStorage.getItem(AUTH_USER_KEY),
       AsyncStorage.getItem(GUEST_WARNINGS_KEY),
       AsyncStorage.getItem(GUEST_VIBE_KEY),
-    ]).then(([sid, token, userStr, guestWarnings, guestVibe]) => {
+      AsyncStorage.getItem(GUEST_THEME_KEY),
+    ]).then(([sid, token, userStr, guestWarnings, guestVibe, guestTheme]) => {
       if (sid) setSessionId(sid);
       if (token) setAuthToken(token);
       if (userStr) {
@@ -86,6 +95,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (guestVibe && validVibes.includes(guestVibe)) {
           _setVibePreference(guestVibe as "corporate" | "the_boys" | "coach_speak" | "vegas_degenerate");
         }
+      }
+      // Theme is always guest-local regardless of auth state
+      const validThemes: ThemeKey[] = ["dark", "light", "field"];
+      if (guestTheme && validThemes.includes(guestTheme as ThemeKey)) {
+        _setThemePreference(guestTheme as ThemeKey);
       }
       setIsLoaded(true);
     });
@@ -139,6 +153,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setThemePreference = (theme: ThemeKey) => {
+    _setThemePreference(theme);
+    AsyncStorage.setItem(GUEST_THEME_KEY, theme);
+  };
+
   return (
     <SessionContext.Provider
       value={{
@@ -153,6 +172,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setShowLeagueWarnings,
         vibePreference,
         setVibePreference,
+        themePreference,
+        setThemePreference,
         isLoaded,
       }}
     >
