@@ -6,6 +6,7 @@ import type {
   DropDestination,
   PlayerHistoryFrame,
 } from "../types/league.ts";
+import { recomputeMostRecentFlags } from "./valuationEngine.ts";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -13,14 +14,23 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
-function isSameCalendarDay(timestampMs: number): boolean {
-  const acquired = new Date(timestampMs);
-  const now = new Date();
-  return (
-    acquired.getFullYear() === now.getFullYear() &&
-    acquired.getMonth() === now.getMonth() &&
-    acquired.getDate() === now.getDate()
-  );
+/**
+ * Returns true when both timestamps fall on the same calendar day in the given
+ * IANA timezone. Uses Intl.DateTimeFormat — never machine-local time.
+ */
+function isSameCalendarDay(
+  timestampMs: number,
+  now: number = Date.now(),
+  timezone = "America/New_York",
+): boolean {
+  const fmt = (ms: number): string =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(ms));
+  return fmt(timestampMs) === fmt(now);
 }
 
 // ─── Validation ──────────────────────────────────────────────────────────────
@@ -57,6 +67,29 @@ function validateRosterAfterMove(
   return null;
 }
 
+/**
+ * Checks whether a player is eligible for a given slot under slotEligibility rules.
+ * Returns a ValidationError if ineligible, null if eligible or no rules defined.
+ */
+function validatePositionLegality(
+  player: Player,
+  slot: string,
+  teamId: string,
+  settings: LeagueSettings,
+): ValidationError | null {
+  if (!settings.slotEligibility) return null;
+  const allowedPositions = settings.slotEligibility[slot];
+  if (!allowedPositions) return null;
+  const hasOverlap = player.eligiblePositions.some((pos) => allowedPositions.includes(pos));
+  if (!hasOverlap) {
+    return {
+      teamId,
+      reason: `Player '${player.id}' (${player.eligiblePositions.join(",")}) is ineligible for slot '${slot}'`,
+    };
+  }
+  return null;
+}
+
 // ─── Core: Atomic Transaction ─────────────────────────────────────────────────
 
 export interface TransactionResult {
@@ -78,7 +111,34 @@ export function executeTransaction(
   const draftPlayers = deepClone(players);
   const draftTeams = deepClone(teams);
 
+  const now = Date.now();
   const allReleasedIds = new Set(moves.flatMap((m) => m.release));
+
+  // Pre-compute origin info for every acquired player before any mutations.
+  const originMap: Record<
+    string,
+    { originTeamId: string | null; originSlot: string | null; priorAcquiredTimestamp: number | null }
+  > = {};
+  for (const move of moves) {
+    for (const pid of move.acquire) {
+      let originTeamId: string | null = null;
+      let originSlot: string | null = null;
+      outer: for (const [tid, team] of Object.entries(draftTeams)) {
+        for (const [slot, ids] of Object.entries(team.rosterSlots)) {
+          if (ids.includes(pid)) {
+            originTeamId = tid;
+            originSlot = slot;
+            break outer;
+          }
+        }
+      }
+      originMap[pid] = {
+        originTeamId,
+        originSlot,
+        priorAcquiredTimestamp: draftPlayers[pid]?.acquiredTimestamp ?? null,
+      };
+    }
+  }
 
   for (const move of moves) {
     const team = draftTeams[move.teamId];
@@ -111,6 +171,14 @@ export function executeTransaction(
           `Player '${pid}' is owned by team '${currentOwner[0]}' and is not being released`,
         );
       }
+      const targetSlot = move.targetSlots[pid];
+      if (!targetSlot) {
+        throw new Error(`No target slot specified for player '${pid}' on team '${move.teamId}'`);
+      }
+      const posErr = validatePositionLegality(player, targetSlot, move.teamId, settings);
+      if (posErr) {
+        throw new Error(`Transaction rolled back — constraint violations: [${posErr.teamId}] ${posErr.reason}`);
+      }
     }
 
     for (const pid of move.release) {
@@ -121,17 +189,24 @@ export function executeTransaction(
 
     for (const pid of move.acquire) {
       const targetSlot = move.targetSlots[pid];
-      if (!targetSlot) {
-        throw new Error(`No target slot specified for player '${pid}' on team '${move.teamId}'`);
-      }
       if (!team.rosterSlots[targetSlot]) team.rosterSlots[targetSlot] = [];
       team.rosterSlots[targetSlot].push(pid);
 
       const player = draftPlayers[pid];
-      const historyFrame: PlayerHistoryFrame = { rosterSlot: targetSlot, executedByTeamId: move.teamId };
+      const origin = originMap[pid];
+      const historyFrame: PlayerHistoryFrame = {
+        rosterSlot: targetSlot,
+        executedByTeamId: move.teamId,
+        origin: {
+          originTeamId: origin.originTeamId,
+          originSlot: origin.originSlot,
+          priorAcquiredTimestamp: origin.priorAcquiredTimestamp,
+          movedAt: now,
+        },
+      };
       player.playerHistoryStack.push(historyFrame);
       player.lastMovedByTeamId = move.teamId;
-      player.acquiredTimestamp = Date.now();
+      player.acquiredTimestamp = now;
     }
   }
 
@@ -146,29 +221,34 @@ export function executeTransaction(
     throw new Error(`Transaction rolled back — constraint violations: ${detail}`);
   }
 
-  for (const move of moves) {
-    for (const pid of move.acquire) {
-      const player = draftPlayers[pid];
-      for (const other of Object.values(draftPlayers)) {
-        if (other.id !== pid && other.lastMovedByTeamId === move.teamId) {
-          other.isMostRecentMoveForTeam = false;
-        }
-      }
-      player.isMostRecentMoveForTeam = true;
-    }
+  // Recompute most-recent flags for every team that acquired a player.
+  const teamsWithAcquisitions = new Set(moves.flatMap((m) => (m.acquire.length > 0 ? [m.teamId] : [])));
+  let finalPlayers = draftPlayers;
+  for (const teamId of teamsWithAcquisitions) {
+    finalPlayers = recomputeMostRecentFlags(finalPlayers, teamId);
   }
 
-  return { players: draftPlayers, teams: draftTeams };
+  return { players: finalPlayers, teams: draftTeams };
 }
 
 // ─── Drop Router ─────────────────────────────────────────────────────────────
 
 /**
- * Routes a dropped player: FREE_AGENT if dropped same calendar day, WAIVER_COLUMN otherwise.
+ * Routes a dropped player: FREE_AGENT if dropped same calendar day as acquired,
+ * WAIVER_COLUMN otherwise.
+ *
+ * @param now    Injected current timestamp (ms). Defaults to Date.now().
+ * @param timezone IANA timezone for calendar-day comparison. Defaults to 'America/New_York'.
  */
-export function routeDroppedPlayer(player: Player): DropDestination {
+export function routeDroppedPlayer(
+  player: Player,
+  now: number = Date.now(),
+  timezone = "America/New_York",
+): DropDestination {
   if (player.acquiredTimestamp === null) return "FREE_AGENT";
-  return isSameCalendarDay(player.acquiredTimestamp) ? "FREE_AGENT" : "WAIVER_COLUMN";
+  return isSameCalendarDay(player.acquiredTimestamp, now, timezone)
+    ? "FREE_AGENT"
+    : "WAIVER_COLUMN";
 }
 
 // ─── Selection Mutations ─────────────────────────────────────────────────────
@@ -196,7 +276,13 @@ export function clearPlayerSelection(
 
 /**
  * Executes a single-player move to a target slot on a team.
- * Sets isMostRecentMoveForTeam=true on this player and false on all prior moves by teamId.
+ *
+ * - Removes the player from ALL teams' rosterSlots before re-inserting.
+ * - Preserves acquiredTimestamp when the player was already on the target team
+ *   (slot shuffles must not reset the waiver clock).
+ * - Stamps a new acquiredTimestamp only on genuine cross-team acquisitions.
+ * - Validates position legality (slotEligibility) and roster caps when settings
+ *   is provided. Throws on violation with no mutation applied.
  */
 export function executeMoveTransaction(
   players: Record<string, Player>,
@@ -204,37 +290,95 @@ export function executeMoveTransaction(
   playerId: string,
   targetSlot: string,
   teamId: string,
+  settings?: LeagueSettings,
 ): { players: Record<string, Player>; teams: Record<string, TeamRoster> } {
   const player = players[playerId];
   if (!player) throw new Error(`Player '${playerId}' not found`);
   const team = teams[teamId];
   if (!team) throw new Error(`Team '${teamId}' not found`);
 
-  const updatedPlayers: Record<string, Player> = {};
-  for (const [pid, p] of Object.entries(players)) {
-    if (pid !== playerId && p.lastMovedByTeamId === teamId) {
-      updatedPlayers[pid] = { ...p, isMostRecentMoveForTeam: false };
-    } else {
-      updatedPlayers[pid] = p;
+  const now = Date.now();
+
+  // Validate position legality before any mutation.
+  if (settings) {
+    const posErr = validatePositionLegality(player, targetSlot, teamId, settings);
+    if (posErr) {
+      throw new Error(`Move rejected — constraint violation: [${posErr.teamId}] ${posErr.reason}`);
     }
   }
 
-  const frame: PlayerHistoryFrame = { rosterSlot: targetSlot, executedByTeamId: teamId };
-  updatedPlayers[playerId] = {
+  // Find player's current location across ALL teams.
+  let originTeamId: string | null = null;
+  let originSlot: string | null = null;
+  for (const [tid, t] of Object.entries(teams)) {
+    for (const [slot, ids] of Object.entries(t.rosterSlots)) {
+      if (ids.includes(playerId)) {
+        originTeamId = tid;
+        originSlot = slot;
+        break;
+      }
+    }
+    if (originTeamId) break;
+  }
+
+  const priorAcquiredTimestamp = player.acquiredTimestamp;
+
+  // Preserve acquiredTimestamp for slot shuffles (player already on the target team).
+  const isSlotShuffle = originTeamId === teamId;
+  const newAcquiredTimestamp = isSlotShuffle ? priorAcquiredTimestamp : now;
+
+  const frame: PlayerHistoryFrame = {
+    rosterSlot: targetSlot,
+    executedByTeamId: teamId,
+    origin: {
+      originTeamId,
+      originSlot,
+      priorAcquiredTimestamp,
+      movedAt: now,
+    },
+  };
+
+  // Apply to deep-cloned teams — remove from ALL teams first.
+  const updatedTeams: Record<string, TeamRoster> = {};
+  for (const [tid, t] of Object.entries(teams)) {
+    const hasPlayer = Object.values(t.rosterSlots).flat().includes(playerId);
+    if (hasPlayer) {
+      const slots: Record<string, string[]> = {};
+      for (const [slot, ids] of Object.entries(t.rosterSlots)) {
+        slots[slot] = ids.filter((id) => id !== playerId);
+      }
+      updatedTeams[tid] = { ...t, rosterSlots: slots };
+    } else {
+      updatedTeams[tid] = t;
+    }
+  }
+
+  // Insert into target team's target slot.
+  const targetTeam = deepClone(updatedTeams[teamId]);
+  if (!targetTeam.rosterSlots[targetSlot]) targetTeam.rosterSlots[targetSlot] = [];
+  targetTeam.rosterSlots[targetSlot].push(playerId);
+  updatedTeams[teamId] = targetTeam;
+
+  // Validate roster caps after mutation.
+  if (settings) {
+    const capErr = validateRosterAfterMove(targetTeam, settings);
+    if (capErr) {
+      throw new Error(`Move rejected — constraint violation: [${capErr.teamId}] ${capErr.reason}`);
+    }
+  }
+
+  // Build updated player.
+  const updatedPlayer: Player = {
     ...player,
     activeSelectionByTeamId: null,
     lastMovedByTeamId: teamId,
-    isMostRecentMoveForTeam: true,
-    acquiredTimestamp: Date.now(),
+    acquiredTimestamp: newAcquiredTimestamp,
     playerHistoryStack: [...player.playerHistoryStack, frame],
+    isMostRecentMoveForTeam: false,
   };
 
-  const updatedTeam = deepClone(team);
-  for (const slot of Object.keys(updatedTeam.rosterSlots)) {
-    updatedTeam.rosterSlots[slot] = updatedTeam.rosterSlots[slot].filter((id) => id !== playerId);
-  }
-  if (!updatedTeam.rosterSlots[targetSlot]) updatedTeam.rosterSlots[targetSlot] = [];
-  updatedTeam.rosterSlots[targetSlot].push(playerId);
+  let updatedPlayers = { ...players, [playerId]: updatedPlayer };
+  updatedPlayers = recomputeMostRecentFlags(updatedPlayers, teamId);
 
-  return { players: updatedPlayers, teams: { ...teams, [teamId]: updatedTeam } };
+  return { players: updatedPlayers, teams: updatedTeams };
 }

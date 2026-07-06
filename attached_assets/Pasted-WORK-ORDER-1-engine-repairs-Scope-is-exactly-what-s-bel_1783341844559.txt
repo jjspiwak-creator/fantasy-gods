@@ -1,0 +1,20 @@
+WORK ORDER 1 — engine repairs. Scope is exactly what's below. Do not refactor beyond it, do not touch artifacts/api-server, artifacts/trade-sim-mobile, artifacts/mockup-sandbox, or any UI components. No new dependencies. Minimal narration, no summary report.
+
+1. Rewrite replit.md: Project = "Fantasy Gods" — a league-agnostic fantasy football war room (any team count, any roster config). Module 1 = multi-team trade simulator; ESPN import is one optional data source, not the product. The single source of truth engine is artifacts/trade-sim/src (types, utils, context). api-server's tradeSimulator.ts is legacy, to be unified into the engine in a later work order. trade-sim-mobile is parked — never build there unless explicitly ordered.
+
+2. In src/types/league.ts: extend PlayerHistoryFrame to record origin: { originTeamId: string | null; originSlot: string | null; priorAcquiredTimestamp: number | null; movedAt: number }. Add to LeagueSettings: slotEligibility?: Record<string, string[]> and leagueTimezone?: string (default 'America/New_York').
+
+3. In src/utils/transactionHandler.ts:
+   a. Both executeTransaction and executeMoveTransaction must push history frames capturing the player's PRIOR placement (origin fields above) before applying the move.
+   b. executeMoveTransaction: preserve acquiredTimestamp when the player was already on that team's roster (slot shuffles must NOT reset the waiver clock); only stamp a new acquiredTimestamp on genuine acquisitions.
+   c. executeMoveTransaction must remove the player from ALL teams' rosterSlots (not just the target team) and must run the same validations as executeTransaction (roster caps, and position legality below), throwing on violation with no mutation.
+   d. Add position-legality validation used by BOTH functions: if slotEligibility is provided, a player may only occupy a slot whose allowed list intersects their eligiblePositions.
+   e. isSameCalendarDay and routeDroppedPlayer: accept an optional now: number param (default Date.now()) and compute calendar day in leagueTimezone via Intl.DateTimeFormat — never machine-local time.
+
+4. In src/utils/valuationEngine.ts, undoLastPlayerMove: restore the player to the popped frame's originTeamId/originSlot (empty-stack limbo must be impossible), restore priorAcquiredTimestamp, and stop hard-setting isMostRecentMoveForTeam. Add recomputeMostRecentFlags(players, teamId) (most recent = latest movedAt on top frames; exactly one or zero flagged per team) and call it after every move and undo.
+
+5. In src/context/LeagueStateContext.tsx: delete the duplicate generateDraftMatrix and import the one from utils/draftUtils.ts.
+
+6. In src/__tests__/leagueEngine.test.ts, add tests asserting: (a) two moves then two undos returns the player to his exact original team and slot with original acquiredTimestamp — no vanishing; (b) a slot shuffle does not reset the waiver clock: player acquired 3 days ago, moved between slots today, dropped today routes to WAIVER_COLUMN; (c) executeMoveTransaction throws on a roster-cap violation and on an ineligible position, with state unchanged; a cross-team move leaves the player on exactly one roster; (d) after move P1 then move P2 then undo P2, exactly P1 carries isMostRecentMoveForTeam — never two flagged; (e) atomic rollback: an executeTransaction where one team's leg violates a cap leaves EVERY team and player deep-equal to the pre-transaction state; (f) churn routing tested with injected timestamps across a midnight boundary in league timezone — no reliance on the machine clock.
+
+7. Convert existing relative-time churn tests to injected timestamps (kill the midnight flakiness). Run the full suite; everything green. Then git commit and push to GitHub with message "Work Order 1: engine repairs — undo origins, waiver clock, validation, timezone, dedupe".

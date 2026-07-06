@@ -13,6 +13,10 @@ import type {
   MatchupSchedule,
   Matchup,
 } from "@/types/league";
+import { generateDraftMatrix } from "@/utils/draftUtils";
+
+// Re-export so any consumers importing from this module continue to work.
+export { generateDraftMatrix } from "@/utils/draftUtils";
 
 // ─── State Shape ─────────────────────────────────────────────────────────────
 
@@ -82,79 +86,6 @@ function leagueReducer(state: LeagueState, action: LeagueAction): LeagueState {
     default:
       return state;
   }
-}
-
-// ─── Draft Matrix Generation ─────────────────────────────────────────────────
-
-/**
- * Generates a full draft pick grid for a given format.
- *
- * Snake:  R1→R2→R3... alternates ascending/descending.
- * 3RR:    R1 ascending, R2 descending (snake), R3 descending again (the reversal),
- *         R4+ resumes normal snake from ascending.
- * Linear: Every round ascending.
- * Auction: Returns linear order (auction managers bid, so a grid is nominal).
- */
-export function generateDraftMatrix(
-  settings: LeagueSettings,
-  teams: TeamRoster[],
-  totalRounds = 15,
-): DraftSlot[] {
-  const n = teams.length;
-  if (n === 0) return [];
-
-  const slots: DraftSlot[] = [];
-  let overallIndex = 0;
-
-  for (let round = 1; round <= totalRounds; round++) {
-    let pickOrder: number[];
-
-    switch (settings.draftType) {
-      case "linear":
-      case "auction":
-        pickOrder = Array.from({ length: n }, (_, i) => i);
-        break;
-
-      case "snake":
-        pickOrder =
-          round % 2 === 0
-            ? Array.from({ length: n }, (_, i) => n - 1 - i) // descending
-            : Array.from({ length: n }, (_, i) => i);           // ascending
-        break;
-
-      case "3rr": {
-        // R1: ascending, R2: descending, R3: descending (reversal),
-        // R4+: flipped snake (even=ascending, odd=descending) due to the offset
-        let isDescending: boolean;
-        if (round <= 3) {
-          isDescending = round !== 1; // rounds 2 and 3 descend
-        } else {
-          isDescending = round % 2 !== 0; // R4 ascending (even), R5 descending (odd), …
-        }
-        pickOrder = isDescending
-          ? Array.from({ length: n }, (_, i) => n - 1 - i)
-          : Array.from({ length: n }, (_, i) => i);
-        break;
-      }
-    }
-
-    for (let pickIdx = 0; pickIdx < n; pickIdx++) {
-      const teamIdx = pickOrder[pickIdx];
-      const team = teams[teamIdx];
-      slots.push({
-        slotId: `R${round}P${pickIdx + 1}`,
-        round,
-        pickInRound: pickIdx + 1,
-        overallIndex: overallIndex++,
-        originalOwnerId: team.teamId,
-        currentOwnerId: team.teamId,
-        assignedPlayerId: null,
-        isLockedKeeper: false,
-      });
-    }
-  }
-
-  return slots;
 }
 
 // ─── Matchup Schedule Generation ─────────────────────────────────────────────

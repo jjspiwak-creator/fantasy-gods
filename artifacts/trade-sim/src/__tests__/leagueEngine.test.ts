@@ -80,6 +80,12 @@ function makePlayer(id: string, overrides?: Partial<Player>): Player {
   };
 }
 
+// Fixed anchor: July 5 2026 at noon EDT (16:00 UTC) — safely midday, no midnight edge cases.
+const ANCHOR_NOW = new Date("2026-07-05T16:00:00Z").getTime();
+const SAME_DAY_MS = ANCHOR_NOW - 30 * 60 * 1000;           // 30 min before anchor
+const YESTERDAY_MS = ANCHOR_NOW - 25 * 60 * 60 * 1000;     // 25 h before = prior calendar day
+const THREE_DAYS_AGO_MS = ANCHOR_NOW - 3 * 24 * 60 * 60 * 1000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. 3RR Pick-Flipping Algorithm
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +158,6 @@ describe("Player selection state — selecting and deselecting leaves zero move 
     const original = makePlayer("P1");
     const players = { P1: original };
     const afterCycle = clearPlayerSelection(setPlayerSelection(players, "P1", "T1"), "P1");
-    // Only activeSelectionByTeamId changes during the cycle — everything else should be pristine
     assert.strictEqual(afterCycle["P1"].lastMovedByTeamId, original.lastMovedByTeamId);
     assert.strictEqual(afterCycle["P1"].isMostRecentMoveForTeam, original.isMostRecentMoveForTeam);
     assert.deepStrictEqual(afterCycle["P1"].playerHistoryStack, original.playerHistoryStack);
@@ -160,38 +165,41 @@ describe("Player selection state — selecting and deselecting leaves zero move 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Roster Churn — Drop Destination Routing
+// 3. Roster Churn — Drop Destination Routing (injected timestamps)
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("routeDroppedPlayer — same-day vs held-past-midnight routing", () => {
   it("routes to FREE_AGENT when acquiredTimestamp is null (never acquired)", () => {
-    assert.strictEqual(routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: null })), "FREE_AGENT");
+    assert.strictEqual(
+      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: null }), ANCHOR_NOW),
+      "FREE_AGENT",
+    );
   });
 
   it("routes to FREE_AGENT when acquired 30 minutes ago (same calendar day)", () => {
-    const todayMs = Date.now() - 30 * 60 * 1000;
-    assert.strictEqual(routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: todayMs })), "FREE_AGENT");
+    assert.strictEqual(
+      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: SAME_DAY_MS }), ANCHOR_NOW),
+      "FREE_AGENT",
+    );
   });
 
   it("routes to FREE_AGENT when acquired seconds ago", () => {
     assert.strictEqual(
-      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: Date.now() - 1000 })),
+      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: ANCHOR_NOW - 1000 }), ANCHOR_NOW),
       "FREE_AGENT",
     );
   });
 
   it("routes to WAIVER_COLUMN when acquired 25 hours ago (prior calendar day)", () => {
-    const yesterday = Date.now() - 25 * 60 * 60 * 1000;
     assert.strictEqual(
-      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: yesterday })),
+      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: YESTERDAY_MS }), ANCHOR_NOW),
       "WAIVER_COLUMN",
     );
   });
 
   it("routes to WAIVER_COLUMN when acquired 3 days ago", () => {
-    const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
     assert.strictEqual(
-      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: threeDaysAgo })),
+      routeDroppedPlayer(makePlayer("P1", { acquiredTimestamp: THREE_DAYS_AGO_MS }), ANCHOR_NOW),
       "WAIVER_COLUMN",
     );
   });
@@ -202,6 +210,8 @@ describe("routeDroppedPlayer — same-day vs held-past-midnight routing", () => 
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("undoLastPlayerMove — only the target player's stack is mutated", () => {
+  const settings = makeSettings();
+
   function buildFixtures() {
     let players: Record<string, Player> = {
       P1: makePlayer("P1"),
@@ -215,10 +225,10 @@ describe("undoLastPlayerMove — only the target player's stack is mutated", () 
     };
 
     // Build P1's history: BENCH → STARTER_QB (2 frames)
-    ({ players, teams } = executeMoveTransaction(players, teams, "P1", "BENCH", "T1"));
-    ({ players, teams } = executeMoveTransaction(players, teams, "P1", "STARTER_QB", "T1"));
+    ({ players, teams } = executeMoveTransaction(players, teams, "P1", "BENCH", "T1", settings));
+    ({ players, teams } = executeMoveTransaction(players, teams, "P1", "STARTER_QB", "T1", settings));
     // Build P2's independent history: STARTER_RB (1 frame)
-    ({ players, teams } = executeMoveTransaction(players, teams, "P2", "STARTER_RB", "T1"));
+    ({ players, teams } = executeMoveTransaction(players, teams, "P2", "STARTER_RB", "T1", settings));
     return { players, teams };
   }
 
@@ -260,5 +270,217 @@ describe("undoLastPlayerMove — only the target player's stack is mutated", () 
   it("throws for a nonexistent player ID", () => {
     const { players, teams } = buildFixtures();
     assert.throws(() => undoLastPlayerMove("GHOST", players, teams), /not found/i);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. Undo Round-Trip — two moves then two undos, no vanishing
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("undo round-trip — two moves then two undos return player to exact original state", () => {
+  it("player ends up on exact original team, slot, and acquiredTimestamp after double undo", () => {
+    const settings = makeSettings();
+    const originalTimestamp = THREE_DAYS_AGO_MS;
+
+    let players: Record<string, Player> = {
+      P1: makePlayer("P1", { acquiredTimestamp: originalTimestamp }),
+    };
+    let teams: Record<string, TeamRoster> = {
+      T1: {
+        ...makeTeams(1)[0],
+        rosterSlots: { STARTER_QB: ["P1"], BENCH: [] },
+      },
+    };
+
+    // Two moves (slot shuffles on T1 — acquiredTimestamp must be preserved)
+    ({ players, teams } = executeMoveTransaction(players, teams, "P1", "BENCH", "T1", settings));
+    ({ players, teams } = executeMoveTransaction(players, teams, "P1", "STARTER_QB", "T1", settings));
+
+    assert.strictEqual(
+      players["P1"].acquiredTimestamp,
+      originalTimestamp,
+      "acquiredTimestamp must be preserved across slot shuffles",
+    );
+
+    // Two undos
+    ({ players, teams } = undoLastPlayerMove("P1", players, teams));
+    ({ players, teams } = undoLastPlayerMove("P1", players, teams));
+
+    // Back to original state
+    assert.strictEqual(
+      players["P1"].acquiredTimestamp,
+      originalTimestamp,
+      "acquiredTimestamp must be restored after two undos",
+    );
+    assert.ok(
+      teams["T1"].rosterSlots["STARTER_QB"]?.includes("P1"),
+      "P1 must be in STARTER_QB after double undo",
+    );
+    assert.ok(
+      !(teams["T1"].rosterSlots["BENCH"] ?? []).includes("P1"),
+      "P1 must NOT be in BENCH after double undo",
+    );
+    assert.strictEqual(players["P1"].playerHistoryStack.length, 0, "History stack must be empty");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Waiver Clock — slot shuffle must not reset acquiredTimestamp
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("waiver clock — slot shuffle does not reset acquiredTimestamp", () => {
+  it("player acquired 3 days ago, shuffled between slots today, dropped today routes to WAIVER_COLUMN", () => {
+    const settings = makeSettings();
+
+    let players: Record<string, Player> = {
+      P1: makePlayer("P1", {
+        eligiblePositions: ["QB"],
+        acquiredTimestamp: THREE_DAYS_AGO_MS,
+      }),
+    };
+    let teams: Record<string, TeamRoster> = {
+      T1: {
+        ...makeTeams(1)[0],
+        rosterSlots: { STARTER_QB: ["P1"], BENCH: [] },
+      },
+    };
+
+    // Slot shuffle: STARTER_QB → BENCH (same team, must not reset clock)
+    ({ players, teams } = executeMoveTransaction(
+      players,
+      teams,
+      "P1",
+      "BENCH",
+      "T1",
+      settings,
+    ));
+
+    assert.strictEqual(
+      players["P1"].acquiredTimestamp,
+      THREE_DAYS_AGO_MS,
+      "acquiredTimestamp must not be reset by a slot shuffle",
+    );
+
+    // Drop today at ANCHOR_NOW → must go to WAIVER_COLUMN
+    assert.strictEqual(
+      routeDroppedPlayer(players["P1"], ANCHOR_NOW),
+      "WAIVER_COLUMN",
+      "player held since 3 days ago must route to WAIVER_COLUMN when dropped today",
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. executeMoveTransaction — validation and cross-team semantics
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("executeMoveTransaction — validation and cross-team semantics", () => {
+  it("throws on roster-cap violation with state unchanged", () => {
+    const capsSettings = makeSettings({
+      rosterCaps: { STARTER_QB: 1, BENCH: 1 },
+      slotRequirements: { STARTER_QB: 1, BENCH: 1 },
+    });
+    const players: Record<string, Player> = {
+      P1: makePlayer("P1", { eligiblePositions: ["QB"] }),
+      P2: makePlayer("P2", { eligiblePositions: ["QB"] }),
+      P3: makePlayer("P3", { eligiblePositions: ["QB"] }),
+    };
+    const teams: Record<string, TeamRoster> = {
+      T1: {
+        ...makeTeams(1)[0],
+        rosterSlots: { STARTER_QB: ["P1"], BENCH: ["P2"] },
+      },
+    };
+
+    // P3 is a free agent; trying to move into already-at-cap STARTER_QB must throw.
+    assert.throws(
+      () => executeMoveTransaction(players, teams, "P3", "STARTER_QB", "T1", capsSettings),
+      /cap exceeded/i,
+    );
+
+    // Original state must be completely unchanged.
+    assert.ok(!teams["T1"].rosterSlots["STARTER_QB"].includes("P3"));
+    assert.ok(!teams["T1"].rosterSlots["BENCH"]?.includes("P3"));
+  });
+
+  it("throws on ineligible position with state unchanged", () => {
+    const eligSettings = makeSettings({
+      slotEligibility: { STARTER_QB: ["QB"] },
+    });
+    const players: Record<string, Player> = {
+      P1: makePlayer("P1", { eligiblePositions: ["RB"] }),
+    };
+    const teams: Record<string, TeamRoster> = {
+      T1: { ...makeTeams(1)[0], rosterSlots: { STARTER_QB: [], BENCH: [] } },
+    };
+
+    assert.throws(
+      () => executeMoveTransaction(players, teams, "P1", "STARTER_QB", "T1", eligSettings),
+      /ineligible/i,
+    );
+    assert.ok(!teams["T1"].rosterSlots["STARTER_QB"].includes("P1"));
+  });
+
+  it("cross-team move removes player from source team and adds to target team", () => {
+    const settings = makeSettings();
+    const players: Record<string, Player> = {
+      P1: makePlayer("P1", { eligiblePositions: ["QB"] }),
+    };
+    const twoTeams = makeTeams(2);
+    const teams: Record<string, TeamRoster> = {
+      T1: { ...twoTeams[0], rosterSlots: { STARTER_QB: ["P1"], BENCH: [] } },
+      T2: { ...twoTeams[1], rosterSlots: { STARTER_QB: [], BENCH: [] } },
+    };
+
+    const { teams: afterTeams } = executeMoveTransaction(
+      players,
+      teams,
+      "P1",
+      "STARTER_QB",
+      "T2",
+      settings,
+    );
+
+    // P1 fully removed from T1.
+    assert.ok(
+      !Object.values(afterTeams["T1"].rosterSlots).flat().includes("P1"),
+      "P1 must be removed from all T1 slots",
+    );
+    // P1 added to T2's STARTER_QB.
+    assert.ok(
+      afterTeams["T2"].rosterSlots["STARTER_QB"].includes("P1"),
+      "P1 must be in T2's STARTER_QB after cross-team move",
+    );
+  });
+
+  it("cross-team move stamps a new acquiredTimestamp (genuine acquisition)", () => {
+    const settings = makeSettings();
+    const before = Date.now();
+    const players: Record<string, Player> = {
+      P1: makePlayer("P1", { acquiredTimestamp: THREE_DAYS_AGO_MS }),
+    };
+    const twoTeams = makeTeams(2);
+    const teams: Record<string, TeamRoster> = {
+      T1: { ...twoTeams[0], rosterSlots: { STARTER_QB: ["P1"], BENCH: [] } },
+      T2: { ...twoTeams[1], rosterSlots: { STARTER_QB: [], BENCH: [] } },
+    };
+
+    const { players: after } = executeMoveTransaction(
+      players,
+      teams,
+      "P1",
+      "STARTER_QB",
+      "T2",
+      settings,
+    );
+    const after_ts = after["P1"].acquiredTimestamp!;
+    assert.ok(
+      after_ts >= before,
+      "cross-team acquisition must stamp a new acquiredTimestamp",
+    );
+    assert.ok(
+      after_ts !== THREE_DAYS_AGO_MS,
+      "acquiredTimestamp must not be the old value after a cross-team move",
+    );
   });
 });

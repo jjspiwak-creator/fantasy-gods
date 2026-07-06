@@ -19,6 +19,15 @@ export interface LeagueSettings {
   /** Maximum players allowed per slot key */
   rosterCaps: Record<string, number>;
   totalAuctionBudget?: number;
+  /**
+   * Maps slot keys to the position strings that may occupy them.
+   * If omitted, no position-legality enforcement is applied.
+   * A player is eligible for a slot if any of their eligiblePositions intersects
+   * the slot's allowed list.
+   */
+  slotEligibility?: Record<string, string[]>;
+  /** IANA timezone string used for calendar-day comparisons (default: 'America/New_York') */
+  leagueTimezone?: string;
 }
 
 // ─── Player ───────────────────────────────────────────────────────────────────
@@ -49,9 +58,21 @@ export interface PlayerContingencyValue {
 }
 
 export interface PlayerHistoryFrame {
+  /** The slot the player was placed into by this move */
   rosterSlot: string;
   financialCost?: number;
   executedByTeamId: string;
+  /** Captures the player's state immediately before this move was applied */
+  origin: {
+    /** Team the player was on before this move (null = was a free agent) */
+    originTeamId: string | null;
+    /** Slot the player occupied before this move (null = was a free agent) */
+    originSlot: string | null;
+    /** acquiredTimestamp value before this move */
+    priorAcquiredTimestamp: number | null;
+    /** Unix ms timestamp of when this move was executed */
+    movedAt: number;
+  };
 }
 
 export interface Player {

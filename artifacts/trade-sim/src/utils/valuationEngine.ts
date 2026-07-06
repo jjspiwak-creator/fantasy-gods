@@ -45,6 +45,42 @@ export function computeRosValue(
   return Math.max(0, schemeAdjusted);
 }
 
+// ─── Most-Recent Flag Recomputation ──────────────────────────────────────────
+
+/**
+ * Recomputes isMostRecentMoveForTeam across all players for a given teamId.
+ *
+ * Rules:
+ *  - Candidates: all players whose lastMovedByTeamId === teamId.
+ *  - Most recent: the candidate whose top history frame has the largest movedAt value.
+ *  - Exactly one (or zero, if no candidates) player is flagged true per team.
+ *
+ * Returns a new players map with flags updated; original map is not mutated.
+ */
+export function recomputeMostRecentFlags(
+  players: Record<string, Player>,
+  teamId: string,
+): Record<string, Player> {
+  let latestMovedAt = -1;
+  let latestPlayerId: string | null = null;
+
+  for (const [pid, p] of Object.entries(players)) {
+    if (p.lastMovedByTeamId !== teamId) continue;
+    const topFrame = p.playerHistoryStack.at(-1);
+    if (topFrame && topFrame.origin.movedAt > latestMovedAt) {
+      latestMovedAt = topFrame.origin.movedAt;
+      latestPlayerId = pid;
+    }
+  }
+
+  const updated: Record<string, Player> = { ...players };
+  for (const [pid, p] of Object.entries(players)) {
+    if (p.lastMovedByTeamId !== teamId) continue;
+    updated[pid] = { ...p, isMostRecentMoveForTeam: pid === latestPlayerId };
+  }
+  return updated;
+}
+
 // ─── Asset-Isolated Undo ──────────────────────────────────────────────────────
 
 export interface UndoResult {
@@ -55,8 +91,12 @@ export interface UndoResult {
 
 /**
  * Pops the top history frame from a single player's stack and restores them
- * to the slot recorded in the previous frame. Only the target player's state
- * and their owning team's rosterSlots are mutated — all other players are untouched.
+ * to the location recorded in that frame's origin fields.
+ *
+ * - Restores originTeamId / originSlot from the popped frame's origin.
+ * - Restores priorAcquiredTimestamp from the popped frame's origin.
+ * - Does not hard-set isMostRecentMoveForTeam; calls recomputeMostRecentFlags
+ *   instead so flags remain consistent across all players for the affected team(s).
  *
  * Throws if the player has no history or does not exist.
  */
@@ -73,21 +113,24 @@ export function undoLastPlayerMove(
 
   const newStack = [...player.playerHistoryStack];
   const poppedFrame = newStack.pop()!;
-  const previousFrame = newStack.length > 0 ? newStack[newStack.length - 1] : null;
 
-  const restoredSlot = previousFrame?.rosterSlot ?? null;
-  const restoredTeamId = previousFrame?.executedByTeamId ?? null;
+  // Restore placement from the popped frame's origin.
+  const { originTeamId, originSlot, priorAcquiredTimestamp } = poppedFrame.origin;
+
+  // Derive lastMovedByTeamId from the new top frame (null if stack is now empty).
+  const newTopFrame = newStack.length > 0 ? newStack[newStack.length - 1] : null;
+  const restoredLastMovedByTeamId = newTopFrame?.executedByTeamId ?? null;
 
   const updatedPlayer: Player = {
     ...player,
     playerHistoryStack: newStack,
-    lastMovedByTeamId: restoredTeamId,
-    isMostRecentMoveForTeam: previousFrame !== null,
-    acquiredTimestamp: player.acquiredTimestamp,
+    lastMovedByTeamId: restoredLastMovedByTeamId,
+    acquiredTimestamp: priorAcquiredTimestamp,
+    isMostRecentMoveForTeam: false,
   };
 
-  // Remove player from all current slot positions
-  const updatedTeams = { ...teams };
+  // Remove player from all current slot positions across all teams.
+  const updatedTeams: Record<string, TeamRoster> = { ...teams };
   for (const [tid, team] of Object.entries(updatedTeams)) {
     const hasPlayer = Object.values(team.rosterSlots).flat().includes(playerId);
     if (hasPlayer) {
@@ -99,14 +142,24 @@ export function undoLastPlayerMove(
     }
   }
 
-  // Re-insert into restored slot if a prior frame exists
-  if (restoredTeamId && restoredSlot && updatedTeams[restoredTeamId]) {
-    const restoredTeam = updatedTeams[restoredTeamId];
+  // Re-insert into the restored slot if origin was on a team.
+  if (originTeamId && originSlot && updatedTeams[originTeamId]) {
+    const restoredTeam = updatedTeams[originTeamId];
     const slots = { ...restoredTeam.rosterSlots };
-    if (!slots[restoredSlot]) slots[restoredSlot] = [];
-    slots[restoredSlot] = [...slots[restoredSlot], playerId];
-    updatedTeams[restoredTeamId] = { ...restoredTeam, rosterSlots: slots };
+    if (!slots[originSlot]) slots[originSlot] = [];
+    slots[originSlot] = [...slots[originSlot], playerId];
+    updatedTeams[originTeamId] = { ...restoredTeam, rosterSlots: slots };
   }
 
-  return { players: { ...players, [playerId]: updatedPlayer }, teams: updatedTeams, poppedFrame };
+  // Recompute most-recent flags for every affected team.
+  const teamIdsToRecompute = new Set<string>();
+  teamIdsToRecompute.add(poppedFrame.executedByTeamId);
+  if (newTopFrame) teamIdsToRecompute.add(newTopFrame.executedByTeamId);
+
+  let finalPlayers: Record<string, Player> = { ...players, [playerId]: updatedPlayer };
+  for (const tid of teamIdsToRecompute) {
+    finalPlayers = recomputeMostRecentFlags(finalPlayers, tid);
+  }
+
+  return { players: finalPlayers, teams: updatedTeams, poppedFrame };
 }
