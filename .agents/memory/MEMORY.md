@@ -5,3 +5,4 @@
 - [Mobile _layout ErrorUtils](mobile-layout-errorutils.md) — ErrorUtils from react-native is undefined on web; never add global error handler in _layout.tsx without a native-only guard.
 - [useVibeText unconditional rule](vibe-text-rules.md) — all useVibeText calls must be at component top level; pass resulting strings as props to non-hook sub-components to avoid conditional-hook violations.
 - [Monetization placeholders](monetization-placeholders.md) — banner ad at dashboard bottom (regular View, not absolute), interstitial Modal in trade.tsx with exact 2s display via Date.now() delta on mutation success.
+- [trade-sim test runner](trade-sim-test-runner.md) — vitest blocked by Replit package firewall; use Node 24 + tsx ESM loader from pnpm store with node:test/node:assert.

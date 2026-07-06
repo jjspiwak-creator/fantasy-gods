@@ -1,0 +1,78 @@
+COMMAND FOR REPLIT AGENT: INITIALIZE MASTER FANTASY ENGINE & STATE ARCHITECTURE
+
+Context: We are initializing the core backend engine for "Fantasy Gods." The visual UI layout layer is strictly frozen and must not be altered. This task is entirely focused on establishing the data architecture, state context, operational validation rules, and atomic transaction systems.
+
+Objective: Implement a highly scalable, multi-temporal data architecture and relational state engine capable of running predictive simulations across variable league sizes, complex player scoring tiers, real-time draft/waiver mechanics, isolated state branching, asset-isolated history stacks, and active selection cursor tracking.
+
+Required Technical Specifications & Implementations:
+
+1. Dynamic Data Schema (src/types/league.ts)
+Create a flexible, platform-agnostic type system with zero hardcoded team counts or position constraints:
+   - LeagueSettings:
+     leagueId: string;
+     leagueStyle: 'lineup' | 'best_ball' | 'guillotine';
+     draftType: 'linear' | 'snake' | '3rr' | 'auction';
+     tieBreakerMetric: 'points_for' | 'head_to_head' | 'points_against';
+     waiverSystem: 'faab_with_rolling_tiebreaker' | 'rolling_priority' | 'inverse_standings';
+     draftClockDuration: number;
+     useLeagueMedian: boolean;
+     divisionIds: string[];
+     scoringRules: Record<string, any>; (Supports nested evaluation keys for tiered or distance bonuses)
+     slotRequirements: Record<string, number>; (Maps slot keys, e.g., 'STARTER_QB', 'BENCH', 'IR')
+     rosterCaps: Record<string, number>;
+     totalAuctionBudget?: number;
+   - Player:
+     id: string; name: string; realTeam: string; byeWeek: number;
+     eligiblePositions: string[]; (Array supporting multi-eligibility, e.g., ['RB', 'WR'])
+     lockStatus: 'free' | 'locked_for_week'; (Tied to real-world game kickoffs)
+     acquiredTimestamp: number | null; (Tracks when a player entered a roster slot for waiver churn validation)
+     activeSelectionByTeamId: string | null; (Tracks active user focus. Vibrant indicator color target)
+     lastMovedByTeamId: string | null; (Tracks the last manager who executed an actual transaction with this asset)
+     isMostRecentMoveForTeam: boolean; (Flags if this is the absolute latest move executed by the manager)
+     playerHistoryStack: Array<{ rosterSlot: string; financialCost?: number; executedByTeamId: string }>; (Asset-isolated stack for localized undo loops)
+     efficiencyMetrics: { targetShare: number; firstReadShare: number; yprr: number; yardsBeforeContact: number; stuffedRate: number; };
+     schemeModifiers: { teamProe: number; motionRate: number; personnelType: string; };
+     riskProfile: { injuryRiskMultiplier: number; suspensionWeeks: number; holdoutRisk: boolean; };
+     contingencyValue: { handcuffId: string | null; upsideMultiplierIfPrimaryRemoved: number; };
+     weeklyProjections: Record<number, Record<string, number>>; (Isolates weekly raw data arrays)
+     customMetadata: Record<string, any>;
+   - TeamRoster:
+     teamId: string; teamName: string; managerName: string; divisionId: string | null;
+     financialBalances: Record<string, number>;
+     rosterSlots: Record<string, string[]>; (Maps custom structural slot keys directly to arrays of Player IDs)
+     draftQueue: string[];
+     isAutoDraftActive: boolean;
+     waiverRank: number;
+     keeperRules: Record<string, { draftSlotCost: number; inflationYears: number }>;
+     futureAssets: Array<{ assetId: string; type: 'draft_pick'; year: number; round: number; originalOwnerId: string }>;
+   - DraftSlot:
+     slotId: string; round: number; pickInRound: number; overallIndex: number;
+     originalOwnerId: string; currentOwnerId: string; assignedPlayerId: string | null;
+     auctionCost?: number; isLockedKeeper: boolean;
+   - MatchupSchedule:
+     weekNumber: number;
+     matchups: Array<{ matchupId: string; teamAId: string; teamBId: string; pointsA: number; pointsB: number }>;
+
+2. Global State & State Branching Context (src/context/LeagueStateContext.tsx)
+   - Implement a React Context Provider tracking the source-of-truth league state matrix.
+   - Include a `branchSession()` method. This must create a deep clone of the active state and assign it a temporary session ID, allowing users to drop into a separate sandbox mode to experiment with mock moves without corrupting live data.
+   - Include automated logic to generate clean draft matrices (handling accurate pick-flipping algorithms for Snake and 3RR formats) and structural head-to-head matchup grids based on settings.
+
+3. Atomic Transaction & Operation Utility (src/utils/transactionHandler.ts)
+   - Implement an atomic transaction runner (`executeTransaction`) capable of processing multi-team, multi-asset updates simultaneously. If any position cap, roster limit, or financial ceiling is violated by any party, the entire batch must roll back cleanly.
+   - Implement a specialized drop router: If a player is dropped, check `acquiredTimestamp`. If dropped within the same billing day it was acquired, route the asset to the `FREE_AGENT` pool. If held past midnight, provision a dynamic `WAIVER_COLUMN` column array in the workspace and route the asset there.
+   - Implement Selection vs Move state mutations: 
+     * `setPlayerSelection(playerId, teamId)`: Updates `activeSelectionByTeamId`.
+     * `clearPlayerSelection(playerId)`: Resets selection to null. If no move was made, player traces are untouched.
+     * `executeMoveTransaction(playerId, targetSlot, teamId)`: Updates the player's transaction state. Sets `lastMovedByTeamId = teamId`, sets `isMostRecentMoveForTeam = true`. Automatically sweeps all other players previously moved by this `teamId` and sets their `isMostRecentMoveForTeam = false`, converting them to the historical translucent color tier.
+
+4. Valuation & Asset-Isolated History Core (src/utils/valuationEngine.ts)
+   - Build a Rest-of-Season (ROS) calculation method that reads weekly stats against custom scoring criteria, processing adjustments for risk profiles and coaching schemes.
+   - Build a localized undo handler (`undoLastPlayerMove(playerId)`): Pops the top history frame off that single player's `playerHistoryStack` and snaps them back to their immediate previous location, preventing multi-user timeline conflicts.
+
+5. Boundary Test Coverage (src/__tests__/leagueEngine.test.ts)
+   - Write a complete Jest unit testing suite verifying:
+     * Precise pick-flipping arrays for 3RR sequences.
+     * State selection adjustments (proving selecting and deselecting without moving leaves zero trace color).
+     * Roster churn validation routing a player to Free Agency vs Waivers based on time thresholds.
+     * Player-isolated history popping mutating only the target asset's position state.
