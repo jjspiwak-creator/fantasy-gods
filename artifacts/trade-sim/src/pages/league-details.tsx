@@ -1,5 +1,7 @@
 import { useParams, Link } from "wouter";
 import { useLeagueTeams } from "@/hooks/use-espn-api";
+import { useEngineHydration } from "@/hooks/useEngineHydration";
+import { useLeagueState } from "@/context/LeagueStateContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { GitCompareArrows, Users, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
@@ -7,6 +9,10 @@ import { motion } from "framer-motion";
 export function LeagueDetailsPage() {
   const { leagueId } = useParams();
   const { data: teams, isLoading } = useLeagueTeams(leagueId || "");
+  useEngineHydration(leagueId, teams);
+  const { state } = useLeagueState();
+  const playerCount = Object.keys(state.players).length;
+  const teamCount   = Object.keys(state.teams).length;
 
   if (isLoading) {
     return <div className="text-center p-12 text-muted-foreground animate-pulse font-display text-xl">LOADING ROSTERS...</div>;
@@ -24,6 +30,11 @@ export function LeagueDetailsPage() {
             <ArrowLeft className="w-4 h-4" /> Back to Leagues
           </Link>
           <h1 className="text-4xl font-display font-bold uppercase">LEAGUE <span className="text-primary">ROSTERS</span></h1>
+          {playerCount > 0 && (
+            <span className="inline-flex items-center gap-1 mt-2 text-xs font-mono px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary/80">
+              Engine: {playerCount} players · {teamCount} teams
+            </span>
+          )}
         </div>
         <Link href={`/leagues/${leagueId}/trade-builder`}>
           <button className="px-6 py-3 rounded-xl font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 box-glow hover:-translate-y-0.5 transition-all flex items-center gap-2">

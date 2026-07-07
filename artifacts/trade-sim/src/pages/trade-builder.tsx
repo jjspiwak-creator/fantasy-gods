@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useLeagueTeams, useSimulateTradeMutation, useSaveTradeMutation } from "@/hooks/use-espn-api";
+import { useEngineHydration } from "@/hooks/useEngineHydration";
 import { useSession } from "@/hooks/use-session";
 import { useShowLeagueWarnings, useUpdateWarningsMutation, useVibePreference } from "@/hooks/use-auth";
 import { useVibeText } from "@/hooks/use-vibe-text";
@@ -18,6 +19,7 @@ export function TradeBuilderPage() {
   const { sessionId } = useSession();
   const [, setLocation] = useLocation();
   const { data: teams, isLoading } = useLeagueTeams(leagueId || "");
+  useEngineHydration(leagueId, teams);
   const simulateMutation = useSimulateTradeMutation();
   const saveMutation = useSaveTradeMutation();
   const showLeagueWarnings = useShowLeagueWarnings();
