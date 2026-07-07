@@ -250,20 +250,10 @@ const SLOT_ELIGIBILITY_MAP: Record<string, string[]> = {
   SUPERFLEX:   ["QB", "RB", "WR", "TE"],
 };
 
-// Verified against: ESPN Fantasy API scoringItems payloads (seasons 2023–2025),
-// the espn-api Python community library (cwendt94/espn-api, v3.x constants),
-// and reverse-engineered ESPN scoring configuration responses.
-//
-// Key corrections vs. earlier draft:
-//   20 ≠ rushingYards  → rushingAttempts  (yards primary scoring ID = 24)
-//   21 ≠ rushingTD     → rushingYards     (TD primary scoring ID = 25)
-//   24 ≠ rushing2PT    → rushingYards     (confirmed: 24/25 = rushing yds/TD)
-//   41 ≠ receptions    → receivingTargets (receptions primary ID = 53)
-//   53 ≠ receivingTargets → receptions   (confirmed)
-//   72 ≠ pprReceptions → lostFumbles     (confirmed)
-//   5  = passingInterceptions            (added; was absent)
-//   25  = rushingTD                      (added; was absent)
-//   26  = rushing2PT                     (added; was absent, was mis-assigned to 24)
+// IDs 3,4,19,20,23,24,25,26,42,43,44,53,72 follow the community-documented ESPN
+// constants (cwendt94/espn-api). IDs 5, 21, 41 and all others are intentionally
+// unmapped and pass through as stat_<id> until confirmed against a live league
+// payload. Do not add mappings here without a real-payload check.
 /**
  * ESPN numeric stat ID → human-readable scoring key used in engine scoringRules.
  * Unknown stat IDs fall back to `stat_${id}`.
@@ -272,20 +262,18 @@ const ESPN_STAT_KEYS: Record<number, string> = {
   // ── Passing ────────────────────────────────────────────────────────────────
   3:  "passingYards",
   4:  "passingTD",
-  5:  "passingInterceptions",   // negative points (e.g. -1 per INT thrown)
   19: "passing2PT",
+  20: "passingInterceptions",   // community-confirmed (cwendt94/espn-api)
   // ── Rushing ───────────────────────────────────────────────────────────────
-  20: "rushingAttempts",        // corrected from "rushingYards"
-  21: "rushingYards",           // corrected from "rushingTD"; alt ESPN stat path
-  24: "rushingYards",           // corrected from "rushing2PT"; primary scoring ID
-  25: "rushingTD",              // added; confirmed rushing yards/TD = 24/25
-  26: "rushing2PT",             // added; 2PT was previously mis-assigned to ID 24
+  23: "rushingAttempts",        // community-confirmed
+  24: "rushingYards",           // community-confirmed; primary scoring ID
+  25: "rushingTD",              // community-confirmed
+  26: "rushing2PT",             // community-confirmed
   // ── Receiving ─────────────────────────────────────────────────────────────
-  41: "receivingTargets",       // corrected from "receptions"; primary = 53
   42: "receivingYards",
   43: "receivingTD",
   44: "receiving2PT",
-  53: "receptions",             // corrected from "receivingTargets"; confirmed
+  53: "receptions",             // community-confirmed; PPR leagues use this ID
   // ── Kicking ───────────────────────────────────────────────────────────────
   83: "fgMade0_19",
   84: "fgMade20_29",
@@ -295,7 +283,7 @@ const ESPN_STAT_KEYS: Record<number, string> = {
   88: "extraPoints",
   89: "fgMissed",
   // ── Miscellaneous ─────────────────────────────────────────────────────────
-  72: "lostFumbles",            // corrected from "pprReceptions"; confirmed
+  72: "lostFumbles",            // community-confirmed
 };
 
 /** Maps ESPN waiver type string → engine waiverSystem value */

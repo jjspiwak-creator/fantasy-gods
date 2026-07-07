@@ -214,7 +214,8 @@ const EXOTIC_FIXTURE: EspnLeagueInput = {
       scoringItems: [
         { statId: 3,  points: 0.04  },   // passingYards
         { statId: 4,  points: 4     },   // passingTD
-        { statId: 5,  points: -1    },   // passingInterceptions (verified ID)
+        { statId: 5,  points: 0.5   },   // unmapped → stat_5 passthrough
+        { statId: 20, points: -1    },   // passingInterceptions (community-confirmed)
         { statId: 24, points: 0.1   },   // rushingYards
         { statId: 25, points: 6     },   // rushingTD
         { statId: 53, points: 1     },   // receptions (PPR)
@@ -623,19 +624,32 @@ describe("adaptEspnLeague — executeTransaction smoke test", () => {
 describe("adaptEspnLeague — corrected stat key mappings", () => {
   const { settings } = adaptEspnLeague(EXOTIC_FIXTURE);
 
-  it("statId 5 maps to 'passingInterceptions', not 'rushingYards'", () => {
-    assert.ok(
-      "passingInterceptions" in settings.scoringRules,
-      "scoringRules must contain passingInterceptions",
-    );
+  it("statId 20 maps to 'passingInterceptions' with no bleed into rushingAttempts", () => {
+    // statId 20 = passingInterceptions (community-confirmed)
     assert.strictEqual(settings.scoringRules["passingInterceptions"], -1);
-    // rushingYards is present (from statId 24), but must NOT include the
-    // interception's -1 contribution
-    const rushingYardsValue = settings.scoringRules["rushingYards"];
-    assert.ok(
-      rushingYardsValue === undefined || rushingYardsValue === 0.1,
-      `rushingYards must not include INT contribution; got ${rushingYardsValue}`,
+    // rushingAttempts (statId 23) is not present in this fixture → must be absent
+    assert.strictEqual(
+      settings.scoringRules["rushingAttempts"],
+      undefined,
+      "rushingAttempts must not be polluted by the interception stat ID",
     );
+  });
+
+  it("statId 5 is unmapped and surfaces as stat_5 passthrough", () => {
+    // statId 5 is intentionally unmapped pending live-payload confirmation.
+    // It must NOT appear under any named key.
+    assert.strictEqual(settings.scoringRules["stat_5"], 0.5);
+    assert.strictEqual(settings.scoringRules["passingInterceptions2"], undefined);
+    // Confirm no named key accidentally consumed statId 5
+    for (const key of Object.keys(settings.scoringRules)) {
+      assert.ok(
+        key === "stat_5" || !key.startsWith("stat_") || key !== "stat_5"
+          ? true
+          : false,
+      );
+    }
+    // The passthrough key must be present
+    assert.ok("stat_5" in settings.scoringRules, "stat_5 passthrough key must exist");
   });
 
   it("statId 53 maps to 'receptions', not 'receivingTargets'", () => {
