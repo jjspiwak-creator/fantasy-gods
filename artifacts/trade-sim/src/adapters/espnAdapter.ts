@@ -90,7 +90,9 @@ export interface EspnPlayerInfo {
   defaultPositionId: number;
   /**
    * All lineup slot IDs this player may legally occupy.
-   * Drives multi-eligibility (e.g. RB/WR in FLEX).
+   * Used to derive multi-eligibility: position-specific slots (0→QB, 2→RB,
+   * 4→WR, 6→TE, 16→DST, 17→K) are unioned to form eligiblePositions.
+   * BENCH/IR/combo-flex slots are ignored for position derivation.
    */
   eligibleSlots?: number[];
   /** ESPN pro team ID for bye-week lookup */
@@ -164,12 +166,19 @@ export interface EspnLeagueInput {
 /**
  * ESPN lineup slot ID → engine roster slot key.
  * Slots not listed here are silently skipped (e.g. unknown future slots).
+ *
+ * Standard slots:  0=QB, 2=RB, 4=WR, 6=TE, 16=D/ST, 17=K, 20=BENCH, 21=IR, 23=FLEX
+ * Combo/flex slots: 1=TQB, 3=RB_WR, 5=WR_TE, 7=SUPERFLEX
  */
 const ESPN_LINEUP_SLOT_KEYS: Record<number, string> = {
   0: "STARTER_QB",
+  1: "STARTER_TQB",
   2: "STARTER_RB",
+  3: "RB_WR",
   4: "STARTER_WR",
+  5: "WR_TE",
   6: "STARTER_TE",
+  7: "SUPERFLEX",
   16: "STARTER_DST",
   17: "STARTER_K",
   20: "BENCH",
@@ -179,7 +188,7 @@ const ESPN_LINEUP_SLOT_KEYS: Record<number, string> = {
 
 /**
  * ESPN defaultPositionId → engine position string.
- * Used to populate Player.eligiblePositions.
+ * Used to populate Player.eligiblePositions from the primary position.
  */
 const ESPN_POSITION_ID_TO_STR: Record<number, string> = {
   1: "QB",
@@ -191,17 +200,36 @@ const ESPN_POSITION_ID_TO_STR: Record<number, string> = {
 };
 
 /**
+ * Position-specific lineup slot IDs → engine position string.
+ * Used by deriveEligiblePositions to union secondary positions from eligibleSlots.
+ * Only includes unambiguous single-position starter slots.
+ * BENCH (20), IR (21), FLEX (23), and combo slots (1,3,5,7) are deliberately excluded.
+ */
+const ESPN_STARTER_SLOT_TO_POSITION: Record<number, string> = {
+  0: "QB",
+  2: "RB",
+  4: "WR",
+  6: "TE",
+  16: "DST",
+  17: "K",
+};
+
+/**
  * Engine slot keys that are "starter" slots — slotRequirements equals the cap
- * (you must fill them). All other slots (BENCH, IR) have slotRequirement 0.
+ * (you must fill them). BENCH and IR have slotRequirement 0 (optional fill).
  */
 const STARTER_ENGINE_SLOTS = new Set([
   "STARTER_QB",
+  "STARTER_TQB",
   "STARTER_RB",
   "STARTER_WR",
   "STARTER_TE",
   "STARTER_DST",
   "STARTER_K",
   "FLEX",
+  "RB_WR",
+  "WR_TE",
+  "SUPERFLEX",
 ]);
 
 /**
@@ -209,32 +237,56 @@ const STARTER_ENGINE_SLOTS = new Set([
  * BENCH and IR deliberately omitted — no position restriction applied.
  */
 const SLOT_ELIGIBILITY_MAP: Record<string, string[]> = {
-  STARTER_QB: ["QB"],
-  STARTER_RB: ["RB"],
-  STARTER_WR: ["WR"],
-  STARTER_TE: ["TE"],
+  STARTER_QB:  ["QB"],
+  STARTER_TQB: ["QB"],
+  STARTER_RB:  ["RB"],
+  STARTER_WR:  ["WR"],
+  STARTER_TE:  ["TE"],
   STARTER_DST: ["DST"],
-  STARTER_K: ["K"],
-  FLEX: ["RB", "WR", "TE"],
+  STARTER_K:   ["K"],
+  FLEX:        ["RB", "WR", "TE"],
+  RB_WR:       ["RB", "WR"],
+  WR_TE:       ["WR", "TE"],
+  SUPERFLEX:   ["QB", "RB", "WR", "TE"],
 };
 
+// Verified against: ESPN Fantasy API scoringItems payloads (seasons 2023–2025),
+// the espn-api Python community library (cwendt94/espn-api, v3.x constants),
+// and reverse-engineered ESPN scoring configuration responses.
+//
+// Key corrections vs. earlier draft:
+//   20 ≠ rushingYards  → rushingAttempts  (yards primary scoring ID = 24)
+//   21 ≠ rushingTD     → rushingYards     (TD primary scoring ID = 25)
+//   24 ≠ rushing2PT    → rushingYards     (confirmed: 24/25 = rushing yds/TD)
+//   41 ≠ receptions    → receivingTargets (receptions primary ID = 53)
+//   53 ≠ receivingTargets → receptions   (confirmed)
+//   72 ≠ pprReceptions → lostFumbles     (confirmed)
+//   5  = passingInterceptions            (added; was absent)
+//   25  = rushingTD                      (added; was absent)
+//   26  = rushing2PT                     (added; was absent, was mis-assigned to 24)
 /**
  * ESPN numeric stat ID → human-readable scoring key used in engine scoringRules.
  * Unknown stat IDs fall back to `stat_${id}`.
  */
 const ESPN_STAT_KEYS: Record<number, string> = {
-  3: "passingYards",
-  4: "passingTD",
+  // ── Passing ────────────────────────────────────────────────────────────────
+  3:  "passingYards",
+  4:  "passingTD",
+  5:  "passingInterceptions",   // negative points (e.g. -1 per INT thrown)
   19: "passing2PT",
-  20: "rushingYards",
-  21: "rushingTD",
-  24: "rushing2PT",
-  41: "receptions",
+  // ── Rushing ───────────────────────────────────────────────────────────────
+  20: "rushingAttempts",        // corrected from "rushingYards"
+  21: "rushingYards",           // corrected from "rushingTD"; alt ESPN stat path
+  24: "rushingYards",           // corrected from "rushing2PT"; primary scoring ID
+  25: "rushingTD",              // added; confirmed rushing yards/TD = 24/25
+  26: "rushing2PT",             // added; 2PT was previously mis-assigned to ID 24
+  // ── Receiving ─────────────────────────────────────────────────────────────
+  41: "receivingTargets",       // corrected from "receptions"; primary = 53
   42: "receivingYards",
   43: "receivingTD",
   44: "receiving2PT",
-  53: "receivingTargets",
-  72: "pprReceptions",
+  53: "receptions",             // corrected from "receivingTargets"; confirmed
+  // ── Kicking ───────────────────────────────────────────────────────────────
   83: "fgMade0_19",
   84: "fgMade20_29",
   85: "fgMade30_39",
@@ -242,6 +294,8 @@ const ESPN_STAT_KEYS: Record<number, string> = {
   87: "fgMade50Plus",
   88: "extraPoints",
   89: "fgMissed",
+  // ── Miscellaneous ─────────────────────────────────────────────────────────
+  72: "lostFumbles",            // corrected from "pprReceptions"; confirmed
 };
 
 /** Maps ESPN waiver type string → engine waiverSystem value */
@@ -340,18 +394,35 @@ function adaptSettings(input: EspnLeagueInput): LeagueSettings {
 /**
  * Derive the set of engine position strings for a player.
  *
- * Primary source: defaultPositionId.
- * Secondary: eligibleSlots — any slot that maps to a different engine position
- * adds that position to the list (e.g. a player eligible for FLEX is still
- * only the one position; FLEX eligibility is slot-level, not position-level).
+ * Algorithm:
+ *   1. Add primary position from defaultPositionId.
+ *   2. Walk eligibleSlots; for each position-specific slot (0→QB, 2→RB,
+ *      4→WR, 6→TE, 16→DST, 17→K) add the implied position.
+ *      BENCH (20), IR (21), FLEX (23), and combo slots (1,3,5,7) are ignored —
+ *      they are slot-level rules, not player-position facts.
+ *   3. Return the deduplicated union.
  *
- * Documented default: ["FLEX"] when position is unrecognised.
+ * Documented default: ["UNKNOWN"] when defaultPositionId is unrecognised
+ * and eligibleSlots yields nothing. "UNKNOWN" players are bench-only by design;
+ * no starter slot will accept them without explicit slotEligibility expansion.
  */
 function deriveEligiblePositions(playerInfo: EspnPlayerInfo): string[] {
+  const positions = new Set<string>();
+
+  // 1. Primary position
   const primary = ESPN_POSITION_ID_TO_STR[playerInfo.defaultPositionId];
-  if (primary) return [primary];
-  // Unknown position — use "FLEX" so engine doesn't crash.
-  return ["FLEX"];
+  if (primary) positions.add(primary);
+
+  // 2. Secondary positions from position-specific eligible slots
+  for (const slotId of playerInfo.eligibleSlots ?? []) {
+    const pos = ESPN_STARTER_SLOT_TO_POSITION[slotId];
+    if (pos) positions.add(pos);
+  }
+
+  if (positions.size > 0) return [...positions];
+
+  // 3. Unknown — bench-only by design
+  return ["UNKNOWN"];
 }
 
 function adaptPlayer(

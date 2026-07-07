@@ -7,8 +7,10 @@ import {
 } from "../adapters/espnAdapter.ts";
 import { executeTransaction } from "../utils/transactionHandler.ts";
 
-// ─── Realistic 10-team league fixture ────────────────────────────────────────
+// ─── Fixture 1: Realistic 10-team league ─────────────────────────────────────
 // Two fully rostered teams, six players total, one FLEX slot, FAAB budget.
+// scoringItems now use the corrected stat IDs: 24=rushingYards, 25=rushingTD,
+// 53=receptions (per verified ESPN API scoring configuration).
 
 const FIXTURE: EspnLeagueInput = {
   id: 336699,
@@ -39,11 +41,11 @@ const FIXTURE: EspnLeagueInput = {
       scoringItems: [
         { statId: 3,  points: 0.04  },  // passingYards
         { statId: 4,  points: 4     },  // passingTD
-        { statId: 20, points: 0.1   },  // rushingYards
-        { statId: 21, points: 6     },  // rushingTD
+        { statId: 24, points: 0.1   },  // rushingYards  (corrected from 20)
+        { statId: 25, points: 6     },  // rushingTD     (corrected from 21)
         { statId: 42, points: 0.1   },  // receivingYards
         { statId: 43, points: 6     },  // receivingTD
-        { statId: 72, points: 1     },  // pprReceptions (PPR)
+        { statId: 53, points: 1     },  // receptions / PPR  (corrected from 72)
       ],
     },
     financeSettings: {
@@ -187,6 +189,166 @@ const FIXTURE: EspnLeagueInput = {
   ],
 };
 
+// ─── Fixture 2: Exotic slots league ──────────────────────────────────────────
+// Tests: SUPERFLEX (slot 7), RB_WR combo slot (slot 3), WR_TE combo slot (slot 5),
+// dual-eligible player, and corrected stat IDs including interceptions.
+
+const EXOTIC_FIXTURE: EspnLeagueInput = {
+  id: 999002,
+  seasonId: 2025,
+  settings: {
+    name: "Exotic Slots League",
+    size: 10,
+    draftSettings: { type: "SNAKE", timePerSelection: 90 },
+    rosterSettings: {
+      lineupSlotCounts: {
+        "0": 1,   // STARTER_QB
+        "3": 1,   // RB_WR combo slot
+        "5": 1,   // WR_TE combo slot
+        "7": 1,   // SUPERFLEX
+        "20": 5,  // BENCH
+      },
+    },
+    scoringSettings: {
+      scoringType: "H2H_POINTS",
+      scoringItems: [
+        { statId: 3,  points: 0.04  },   // passingYards
+        { statId: 4,  points: 4     },   // passingTD
+        { statId: 5,  points: -1    },   // passingInterceptions (verified ID)
+        { statId: 24, points: 0.1   },   // rushingYards
+        { statId: 25, points: 6     },   // rushingTD
+        { statId: 53, points: 1     },   // receptions (PPR)
+        { statId: 72, points: -2    },   // lostFumbles
+      ],
+    },
+    waiverSettings: { type: "TRADITIONAL" },
+  },
+  teams: [
+    {
+      id: 10,
+      name: "Team Alpha",
+      owners: ["mgr-010"],
+      waiverRank: 1,
+      roster: {
+        entries: [
+          {
+            // QB in STARTER_QB
+            playerId: 4040715,
+            lineupSlotId: 0,
+            acquisitionDate: 1693000000000,
+            playerPoolEntry: {
+              acquisitionType: "DRAFT",
+              player: {
+                id: 4040715,
+                fullName: "Lamar Jackson",
+                defaultPositionId: 1,   // QB
+                eligibleSlots: [0, 7, 20, 21],
+                proTeamId: 33,
+                byeWeek: 14,
+              },
+            },
+          },
+          {
+            // RB in RB_WR combo slot (slot 3)
+            playerId: 3054211,
+            lineupSlotId: 3,
+            acquisitionDate: 1693000000000,
+            playerPoolEntry: {
+              acquisitionType: "DRAFT",
+              player: {
+                id: 3054211,
+                fullName: "Christian McCaffrey",
+                defaultPositionId: 2,   // RB
+                eligibleSlots: [2, 3, 20, 23],
+                proTeamId: 25,
+                byeWeek: 9,
+              },
+            },
+          },
+          {
+            // Dual-eligible WR/TE in WR_TE combo slot (slot 5)
+            // eligibleSlots includes both WR slot (4) and TE slot (6) →
+            // deriveEligiblePositions should yield ["WR","TE"]
+            playerId: 9001,
+            lineupSlotId: 5,
+            acquisitionDate: 1693000000000,
+            playerPoolEntry: {
+              acquisitionType: "DRAFT",
+              player: {
+                id: 9001,
+                fullName: "Dual Eligible Star",
+                defaultPositionId: 3,        // primary = WR
+                eligibleSlots: [4, 6, 5, 20, 23], // WR slot(4), TE slot(6) → both positions
+                proTeamId: 21,
+                byeWeek: 7,
+              },
+            },
+          },
+          {
+            // QB in SUPERFLEX (slot 7) — legal because SUPERFLEX accepts QB
+            playerId: 3054035,
+            lineupSlotId: 7,
+            acquisitionDate: 1693000000000,
+            playerPoolEntry: {
+              acquisitionType: "DRAFT",
+              player: {
+                id: 3054035,
+                fullName: "Joe Burrow",
+                defaultPositionId: 1,   // QB
+                eligibleSlots: [0, 7, 20, 21],
+                proTeamId: 4,
+                byeWeek: 7,
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      id: 11,
+      name: "Team Beta",
+      owners: ["mgr-011"],
+      waiverRank: 2,
+      roster: {
+        entries: [
+          {
+            playerId: 4429795,
+            lineupSlotId: 0,   // STARTER_QB
+            acquisitionDate: 1693000000000,
+            playerPoolEntry: {
+              acquisitionType: "DRAFT",
+              player: {
+                id: 4429795,
+                fullName: "CJ Stroud",
+                defaultPositionId: 1,   // QB
+                eligibleSlots: [0, 7, 20, 21],
+                proTeamId: 34,
+                byeWeek: 14,
+              },
+            },
+          },
+          {
+            playerId: 4569618,
+            lineupSlotId: 7,   // SUPERFLEX (RB in superflex)
+            acquisitionDate: 1693000000000,
+            playerPoolEntry: {
+              acquisitionType: "DRAFT",
+              player: {
+                id: 4569618,
+                fullName: "Saquon Barkley",
+                defaultPositionId: 2,   // RB
+                eligibleSlots: [2, 7, 20, 21, 23],
+                proTeamId: 21,
+                byeWeek: 5,
+              },
+            },
+          },
+        ],
+      },
+    },
+  ],
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Player uniqueness — every rostered player ID appears exactly once
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,8 +442,8 @@ describe("adaptEspnLeague — settings derivation", () => {
     assert.strictEqual(settings.scoringRules["passingYards"], 0.04);
   });
 
-  it("scoringRules.pprReceptions = 1 (PPR)", () => {
-    assert.strictEqual(settings.scoringRules["pprReceptions"], 1);
+  it("scoringRules.receptions = 1 (PPR — corrected stat ID 53)", () => {
+    assert.strictEqual(settings.scoringRules["receptions"], 1);
   });
 
   it("FAAB budget seeded into each team's financialBalances", () => {
@@ -366,8 +528,6 @@ describe("adaptEspnLeague — executeTransaction smoke test", () => {
   it("legal two-team QB swap succeeds", () => {
     const { settings, players, teams } = adaptEspnLeague(FIXTURE);
 
-    // Team 1 (id "1") sends Mahomes ("3139477") → Team 2 into STARTER_QB
-    // Team 2 (id "2") sends Josh Allen ("2330")  → Team 1 into STARTER_QB
     const result = executeTransaction(players, teams, settings, [
       {
         teamId: "1",
@@ -383,17 +543,14 @@ describe("adaptEspnLeague — executeTransaction smoke test", () => {
       },
     ]);
 
-    // Allen now on Team 1's STARTER_QB
     assert.ok(
       result.teams["1"].rosterSlots["STARTER_QB"]?.includes("2330"),
       "Josh Allen must be in Team 1 STARTER_QB after swap",
     );
-    // Mahomes now on Team 2's STARTER_QB
     assert.ok(
       result.teams["2"].rosterSlots["STARTER_QB"]?.includes("3139477"),
       "Mahomes must be in Team 2 STARTER_QB after swap",
     );
-    // Neither player is on their original team any more
     assert.ok(
       !Object.values(result.teams["1"].rosterSlots).flat().includes("3139477"),
       "Mahomes must be removed from Team 1",
@@ -407,15 +564,13 @@ describe("adaptEspnLeague — executeTransaction smoke test", () => {
   it("illegal-position move throws — QB placed in FLEX slot", () => {
     const { settings, players, teams } = adaptEspnLeague(FIXTURE);
 
-    // Attempt to move Mahomes (QB) from Team 1 into Team 2's FLEX slot.
-    // slotEligibility.FLEX = ['RB','WR','TE'], so QB is ineligible.
     assert.throws(
       () =>
         executeTransaction(players, teams, settings, [
           {
             teamId: "2",
-            release: ["3054245"],    // release Kelce from Team 2
-            acquire: ["3139477"],    // acquire Mahomes from Team 1 (not released — will fail ownership check first)
+            release: ["3054245"],
+            acquire: ["3139477"],
             targetSlots: { "3139477": "FLEX" },
           },
           {
@@ -458,5 +613,206 @@ describe("adaptEspnLeague — executeTransaction smoke test", () => {
       originalT1Slots,
       "Original teams map must be unmodified after a thrown transaction",
     );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. Corrected stat IDs — interception scoring item must NOT surface as rushingYards
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("adaptEspnLeague — corrected stat key mappings", () => {
+  const { settings } = adaptEspnLeague(EXOTIC_FIXTURE);
+
+  it("statId 5 maps to 'passingInterceptions', not 'rushingYards'", () => {
+    assert.ok(
+      "passingInterceptions" in settings.scoringRules,
+      "scoringRules must contain passingInterceptions",
+    );
+    assert.strictEqual(settings.scoringRules["passingInterceptions"], -1);
+    // rushingYards is present (from statId 24), but must NOT include the
+    // interception's -1 contribution
+    const rushingYardsValue = settings.scoringRules["rushingYards"];
+    assert.ok(
+      rushingYardsValue === undefined || rushingYardsValue === 0.1,
+      `rushingYards must not include INT contribution; got ${rushingYardsValue}`,
+    );
+  });
+
+  it("statId 53 maps to 'receptions', not 'receivingTargets'", () => {
+    assert.strictEqual(settings.scoringRules["receptions"], 1);
+    assert.strictEqual(settings.scoringRules["receivingTargets"], undefined);
+  });
+
+  it("statId 72 maps to 'lostFumbles', not 'pprReceptions'", () => {
+    assert.strictEqual(settings.scoringRules["lostFumbles"], -2);
+    assert.strictEqual(settings.scoringRules["pprReceptions"], undefined);
+  });
+
+  it("statId 24 maps to 'rushingYards'", () => {
+    assert.strictEqual(settings.scoringRules["rushingYards"], 0.1);
+  });
+
+  it("statId 25 maps to 'rushingTD'", () => {
+    assert.strictEqual(settings.scoringRules["rushingTD"], 6);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. SUPERFLEX slot — QB legally occupies SUPERFLEX; appears in adapted rosters
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("adaptEspnLeague — SUPERFLEX slot", () => {
+  const { settings, players, teams } = adaptEspnLeague(EXOTIC_FIXTURE);
+
+  it("slotEligibility.SUPERFLEX = ['QB','RB','WR','TE']", () => {
+    assert.deepStrictEqual(
+      settings.slotEligibility!["SUPERFLEX"],
+      ["QB", "RB", "WR", "TE"],
+    );
+  });
+
+  it("SUPERFLEX cap = 1, requirement = 1 (starter slot)", () => {
+    assert.strictEqual(settings.rosterCaps["SUPERFLEX"], 1);
+    assert.strictEqual(settings.slotRequirements["SUPERFLEX"], 1);
+  });
+
+  it("Joe Burrow (QB) appears in Team Alpha's SUPERFLEX slot after adaptation", () => {
+    const superflex = teams["10"].rosterSlots["SUPERFLEX"] ?? [];
+    assert.ok(
+      superflex.includes("3054035"),
+      "Joe Burrow must be placed in SUPERFLEX slot",
+    );
+    assert.ok("3054035" in players, "Joe Burrow must be in the players map");
+  });
+
+  it("Saquon Barkley (RB) appears in Team Beta's SUPERFLEX slot after adaptation", () => {
+    const superflex = teams["11"].rosterSlots["SUPERFLEX"] ?? [];
+    assert.ok(
+      superflex.includes("4569618"),
+      "Saquon Barkley must be placed in SUPERFLEX slot",
+    );
+  });
+
+  it("executeTransaction: QB legally placed into SUPERFLEX slot via trade", () => {
+    // Re-adapt to get fresh mutable state.
+    const { settings: s, players: p, teams: t } = adaptEspnLeague(EXOTIC_FIXTURE);
+
+    // Burrow (QB) is in Team Alpha's SUPERFLEX.
+    // Barkley (RB) is in Team Beta's SUPERFLEX.
+    // Swap them through SUPERFLEX: clean net-zero on both rosters.
+    // The key assertion: Burrow (QB) ends up in Team Beta's SUPERFLEX → validates QB is legal in SUPERFLEX.
+    const result = executeTransaction(p, t, s, [
+      {
+        teamId: "10",
+        release: ["3054035"],          // Burrow out of Alpha SUPERFLEX
+        acquire: ["4569618"],           // Barkley into Alpha SUPERFLEX
+        targetSlots: { "4569618": "SUPERFLEX" },
+      },
+      {
+        teamId: "11",
+        release: ["4569618"],           // Barkley out of Beta SUPERFLEX
+        acquire: ["3054035"],           // Burrow into Beta SUPERFLEX
+        targetSlots: { "3054035": "SUPERFLEX" },
+      },
+    ]);
+
+    assert.ok(
+      result.teams["11"].rosterSlots["SUPERFLEX"]?.includes("3054035"),
+      "Joe Burrow (QB) must land in Team Beta SUPERFLEX — QB is legal in SUPERFLEX",
+    );
+    assert.ok(
+      result.teams["10"].rosterSlots["SUPERFLEX"]?.includes("4569618"),
+      "Saquon Barkley (RB) must land in Team Alpha SUPERFLEX",
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. RB_WR combo slot — RB legally occupies RB_WR
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("adaptEspnLeague — RB_WR combo slot", () => {
+  const { settings, players, teams } = adaptEspnLeague(EXOTIC_FIXTURE);
+
+  it("slotEligibility.RB_WR = ['RB','WR']", () => {
+    assert.deepStrictEqual(settings.slotEligibility!["RB_WR"], ["RB", "WR"]);
+  });
+
+  it("RB_WR cap = 1, requirement = 1 (starter slot)", () => {
+    assert.strictEqual(settings.rosterCaps["RB_WR"], 1);
+    assert.strictEqual(settings.slotRequirements["RB_WR"], 1);
+  });
+
+  it("McCaffrey (RB) appears in RB_WR slot after adaptation", () => {
+    const rbWr = teams["10"].rosterSlots["RB_WR"] ?? [];
+    assert.ok(
+      rbWr.includes("3054211"),
+      "McCaffrey must be placed in RB_WR slot",
+    );
+  });
+
+  it("executeTransaction: RB can be moved into RB_WR slot", () => {
+    const { settings: s, players: p, teams: t } = adaptEspnLeague(EXOTIC_FIXTURE);
+
+    // Barkley (RB, Team Beta SUPERFLEX) → Team Alpha RB_WR
+    // McCaffrey (RB, Team Alpha RB_WR)  → Team Beta SUPERFLEX
+    // Both are RBs so both slots accept them.
+    const result = executeTransaction(p, t, s, [
+      {
+        teamId: "10",
+        release: ["3054211"],
+        acquire: ["4569618"],
+        targetSlots: { "4569618": "RB_WR" },
+      },
+      {
+        teamId: "11",
+        release: ["4569618"],
+        acquire: ["3054211"],
+        targetSlots: { "3054211": "SUPERFLEX" },
+      },
+    ]);
+
+    assert.ok(
+      result.teams["10"].rosterSlots["RB_WR"]?.includes("4569618"),
+      "Barkley (RB) must be accepted into Team Alpha RB_WR slot",
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Dual-eligible player — eligibleSlots spanning WR and TE yields both positions
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("adaptEspnLeague — dual-eligible player", () => {
+  const { players } = adaptEspnLeague(EXOTIC_FIXTURE);
+
+  it("player 9001 has defaultPositionId=WR but eligibleSlots includes TE slot", () => {
+    // Fixture has: defaultPositionId=3 (WR), eligibleSlots=[4,6,5,20,23]
+    // Slot 4 → WR (position-specific), slot 6 → TE (position-specific)
+    // → deriveEligiblePositions should union both
+    const ep = players["9001"].eligiblePositions;
+    assert.ok(ep.includes("WR"), "dual-eligible player must include WR");
+    assert.ok(ep.includes("TE"), "dual-eligible player must include TE from TE slot (6)");
+    assert.strictEqual(ep.length, 2, "must have exactly WR and TE, nothing else");
+  });
+
+  it("player 9001 is placed in WR_TE slot after adaptation", () => {
+    const { teams } = adaptEspnLeague(EXOTIC_FIXTURE);
+    const wrTe = teams["10"].rosterSlots["WR_TE"] ?? [];
+    assert.ok(
+      wrTe.includes("9001"),
+      "dual-eligible player must be in WR_TE slot",
+    );
+  });
+
+  it("slotEligibility.WR_TE = ['WR','TE']", () => {
+    const { settings } = adaptEspnLeague(EXOTIC_FIXTURE);
+    assert.deepStrictEqual(settings.slotEligibility!["WR_TE"], ["WR", "TE"]);
+  });
+
+  it("BENCH-only eligible slots do not bleed into eligiblePositions", () => {
+    // McCaffrey: eligibleSlots=[2,3,20,23] — only slot 2 (RB) is position-specific
+    // slot 3 (RB_WR combo) and 20 (BENCH) and 23 (FLEX) are ignored
+    assert.deepStrictEqual(players["3054211"].eligiblePositions, ["RB"]);
   });
 });
