@@ -83,6 +83,10 @@ Every package extends `tsconfig.base.json` which sets `composite: true`.
 - `pnpm --filter @workspace/db run push` — push DB schema changes
 - `pnpm --filter @workspace/trade-sim run test` — run engine unit tests
 
+## Key Documents
+
+- [Roadmap](docs/ROADMAP.md) — vision, naming, monetization, build order, security, and verification protocol
+
 ## User preferences
 
 - Minimal narration in responses; no summary reports unless explicitly requested.
