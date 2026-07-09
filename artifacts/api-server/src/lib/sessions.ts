@@ -7,14 +7,16 @@ import { logger } from "./logger";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+const stripWhitespace = (v: string) => v.replace(/\s+/g, "");
+
 export async function createSession(creds: EspnCredentials, username?: string): Promise<string> {
   const sessionId = randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
   await db.insert(sessionsTable).values({
     id: sessionId,
-    espnS2: creds.espnS2,
-    swid: creds.swid,
+    espnS2: stripWhitespace(creds.espnS2),
+    swid: stripWhitespace(creds.swid),
     username: username || null,
     expiresAt,
   });

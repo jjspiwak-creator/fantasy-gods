@@ -67,9 +67,11 @@ const NFL_TEAMS: Record<number, string> = {
   33: "BAL", 34: "HOU",
 };
 
+const stripWs = (v: string) => v.replace(/\s+/g, "");
+
 function buildHeaders(creds: EspnCredentials) {
   return {
-    Cookie: `espn_s2=${creds.espnS2}; SWID=${creds.swid}`,
+    Cookie: `espn_s2=${stripWs(creds.espnS2)}; SWID=${stripWs(creds.swid)}`,
     "X-Fantasy-Filter": JSON.stringify({}),
     "Accept": "application/json",
   };
