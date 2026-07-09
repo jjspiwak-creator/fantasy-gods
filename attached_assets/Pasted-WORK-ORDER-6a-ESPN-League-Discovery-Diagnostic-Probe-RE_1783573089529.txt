@@ -1,0 +1,82 @@
+WORK ORDER 6a — ESPN League Discovery: Diagnostic Probe (READ-ONLY)
+
+GOAL
+League discovery is broken. In artifacts/api-server/src/lib/espn.ts, getUserLeagueIds
+calls GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leagues?view=mLeagueSettings&view=mStatus,
+ESPN returns 405, and the code silently returns an empty list. Before rewriting it, this
+order gathers ground-truth evidence from ESPN's Fan API — the service that maps a user
+(SWID) to their leagues. This order is DIAGNOSTIC ONLY. Do not fix anything yet.
+
+SCOPE — FILES
+- CREATE exactly one new file: scripts/espn-fan-probe.mjs
+- Do NOT modify any existing file. Do not touch artifacts/api-server/src/lib/espn.ts.
+
+SECURITY — HARD RULES
+- Credentials come ONLY from environment variables ESPN_S2 and SWID (already set as
+  Replit Secrets by the owner).
+- Never print, log, hardcode, or commit these values. Every line the script outputs
+  (including error messages) must pass through a redact() helper that replaces the
+  ESPN_S2 value, the SWID value, and the SWID value with braces removed, with the
+  text [REDACTED].
+
+THE SCRIPT — scripts/espn-fan-probe.mjs (plain Node, zero dependencies; Node 24 has
+fetch built in). Wrap the whole main routine in try/catch; on error print
+"SCRIPT ERROR:" plus the redacted error message and exit 1.
+
+1. Read ESPN_S2 and SWID from process.env. If either is missing, print exactly
+   "MISSING ENV: ESPN_S2 or SWID" and exit 1.
+2. season = Number(process.env.PROBE_SEASON) || new Date().getFullYear()
+3. Build the cookie header the same way the app does, with whitespace stripped from
+   both values: espn_s2=<value>; SWID=<value>
+4. STEP A — Fan API attempts. Try these GETs in order, stopping at the first HTTP 200.
+   For each attempt print: attempt number, the URL with the SWID shown as [REDACTED],
+   and the HTTP status code. All requests send the Cookie header plus
+   Accept: application/json.
+   - Attempt 1: https://fan.api.espn.com/apis/v2/fans/<SWID> — SWID exactly as stored,
+     curly braces included, encoded with encodeURIComponent.
+   - Attempt 2: same URL but with the SWID's curly braces removed.
+   - Attempt 3: Attempt 1's URL plus
+     ?displayEvents=true&displayNow=true&displayRecs=true&recLimit=5&context=fantasy&source=espncom-fantasy&lang=en&section=espn&region=us
+   If none return 200, print exactly "ALL FAN API ATTEMPTS FAILED" and stop. Do not
+   guess or fabricate anything beyond the observed status codes.
+5. On the first 200, parse the JSON and print:
+   - "TOP-LEVEL KEYS:" followed by the top-level key NAMES only (no values — the
+     profile may contain personal fields we do not need).
+   - "PREFERENCES COUNT:" preferences.length. If the preferences field is absent,
+     print "NO PREFERENCES FIELD FOUND" and stop. If it is empty, print
+     "PREFERENCES EMPTY" and stop.
+6. Football filter: a preference counts as football if JSON.stringify(preference)
+   contains "FFL". Print "FOOTBALL PREFERENCES COUNT:" and then the full pretty JSON
+   (2-space indent, through redact()) of up to 2 football preferences. If a printed
+   preference exceeds 6000 characters, truncate it and print "TRUNCATED". If zero
+   look like football, print "NO OBVIOUS FOOTBALL MARKER — printing first 2
+   preferences raw" and print those instead. Print only what is actually in the
+   response — never invent field names.
+7. STEP B — Cross-check. From the first football preference, find a league id: try
+   metaData.entry.groups[0].groupId; if absent, search the object for any key named
+   exactly groupId and take its first value. Also read metaData.entry.seasonId if
+   present. If no groupId exists anywhere, print exactly
+   "NO groupId FIELD FOUND — SKIPPING CROSS-CHECK" and finish.
+   If found, GET
+   https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/<season>/segments/0/leagues/<groupId>?view=mSettings&view=mStatus
+   with the same Cookie header. Print "CROSS-CHECK STATUS:" and the status code.
+   If 200, also print the response's settings.name, settings.size, and
+   status.currentMatchupPeriod (values only, through redact()).
+8. Exit 0.
+
+RUN
+- node scripts/espn-fan-probe.mjs
+- Then run the project's full test suite once (same command as previous work orders)
+  to confirm nothing regressed — expect all 26 tests passing.
+
+DO NOT PUSH YET. When done, ask the owner for permission to push and wait. Only push
+after the owner replies with the single word: Push
+
+End your work summary with a section titled exactly "VERIFICATION REPORT" containing ONLY:
+1. The exact command used to run the probe.
+2. The probe's complete console output, verbatim (it is redacted by design).
+3. The test suite's summary line.
+4. One sentence confirming no existing files were modified and that
+   scripts/espn-fan-probe.mjs is the only file added.
+
+final message: only git diff --stat output
