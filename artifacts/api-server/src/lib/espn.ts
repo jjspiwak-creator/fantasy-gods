@@ -77,18 +77,32 @@ function buildHeaders(creds: EspnCredentials) {
   };
 }
 
+export function extractFootballLeagueIds(fanData: unknown, season: number): string[] {
+  const preferences = (fanData as any)?.preferences;
+  if (!Array.isArray(preferences)) return [];
+
+  const ids = new Set<string>();
+
+  for (const pref of preferences) {
+    if (pref?.typeId !== 9) continue;
+    const entry = pref?.metaData?.entry;
+    if (entry?.abbrev !== "FFL") continue;
+    if (entry?.seasonId !== season) continue;
+
+    const groups = entry?.groups;
+    if (!Array.isArray(groups)) continue;
+
+    for (const group of groups) {
+      const groupId = group?.groupId;
+      if (groupId != null) ids.add(String(groupId));
+    }
+  }
+
+  return Array.from(ids);
+}
+
 export async function fetchUserLeagues(creds: EspnCredentials, season = new Date().getFullYear()): Promise<EspnLeague[]> {
-  const url = `${ESPN_BASE}/leagueHistory?leagueId=0&season=${season}&view=mLeagueSettings`;
-
-  const swid = creds.swid.replace(/[{}]/g, "");
-  const meUrl = `https://registerdisney.go.com/jgc/v6/client/ESPN-ONESITE.WEB-PROD/guest/refresh-auth?langPref=en-US`;
-
-  const leaguesUrl = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues?view=mLeagueSettings`;
-
   try {
-    const memberUrl = `https://fantasy.espn.com/apis/v3/games/ffl/seasons/${season}?view=proTeamSchedules_wl`;
-    const headers = buildHeaders(creds);
-
     const leagueIds = await getUserLeagueIds(creds, season);
 
     const leagues: EspnLeague[] = [];
@@ -103,46 +117,26 @@ export async function fetchUserLeagues(creds: EspnCredentials, season = new Date
     return leagues;
   } catch (err) {
     logger.error({ err }, "Failed to fetch user leagues");
+    if (err instanceof Error) throw err;
     throw new Error("Failed to fetch leagues from ESPN. Please verify your credentials.");
   }
 }
 
 async function getUserLeagueIds(creds: EspnCredentials, season: number): Promise<string[]> {
-  const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}?view=proTeamSchedules_wl`;
-  const headers = buildHeaders(creds);
+  const url = `https://fan.api.espn.com/apis/v2/fans/${encodeURIComponent(creds.swid.trim())}`;
+  const headers = {
+    ...buildHeaders(creds),
+    Accept: "application/json",
+  };
 
   const resp = await fetch(url, { headers });
   if (!resp.ok) {
-    logger.warn({ url, status: resp.status }, "ESPN getUserLeagueIds non-OK response");
-    throw new Error(`ESPN API returned ${resp.status}`);
+    logger.warn({ status: resp.status }, "ESPN Fan API non-OK response");
+    throw new Error(`ESPN Fan API returned ${resp.status}. Please re-check your ESPN connection.`);
   }
 
   const data: any = await resp.json();
-
-  const leaguesUrl = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues?view=mLeagueSettings&filterLeagueIds={"value":[]}`;
-
-  const swidClean = creds.swid.replace(/[{}]/g, "");
-  const profileUrl = `https://fantasy.espn.com/apis/v3/games/ffl/seasons/${season}?view=kona_player_info`;
-
-  const favoritesUrl = `https://fantasy.espn.com/apis/v3/games/ffl/leagueHistory/0?seasonId=${season}&view=mLiveScoring&view=mMatchupScore&view=mTeam`;
-
-  const meUrl = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues?view=mLeagueSettings&view=mStatus`;
-
-  const searchHeaders = {
-    ...buildHeaders(creds),
-    "X-Fantasy-Source": "kona",
-  };
-
-  const searchResp = await fetch(meUrl, { headers: searchHeaders });
-  if (searchResp.ok) {
-    const searchData: any = await searchResp.json();
-    if (Array.isArray(searchData)) {
-      return searchData.map((l: any) => String(l.id)).filter(Boolean);
-    }
-    if (searchData?.id) return [String(searchData.id)];
-  }
-
-  return [];
+  return extractFootballLeagueIds(data, season);
 }
 
 async function fetchLeagueData(creds: EspnCredentials, leagueId: string, season: number): Promise<EspnLeague | null> {

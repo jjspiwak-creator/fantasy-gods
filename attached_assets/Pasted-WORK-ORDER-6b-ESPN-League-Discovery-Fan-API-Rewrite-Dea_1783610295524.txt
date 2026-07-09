@@ -1,0 +1,95 @@
+WORK ORDER 6b — ESPN League Discovery: Fan API Rewrite + Dead Code Removal
+
+CONTEXT (proven by scripts/espn-fan-probe.mjs at commit 19f43f1 — do not re-derive)
+- GET https://fan.api.espn.com/apis/v2/fans/<SWID> (SWID with curly braces kept,
+  encoded with encodeURIComponent, sent with the standard Cookie header plus
+  Accept: application/json) returns 200.
+- The response has a top-level "preferences" array. A user's fantasy football league
+  for a season is a preference where typeId === 9 AND metaData.entry.abbrev === "FFL"
+  AND metaData.entry.seasonId === <season>. The league id is
+  metaData.entry.groups[].groupId (a number).
+- A discovered groupId round-trips: .../seasons/<season>/segments/0/leagues/<groupId>
+  ?view=mSettings&view=mStatus returned 200 with correct league data.
+- The old call GET .../seasons/{season}/segments/0/leagues?view=mLeagueSettings&view=mStatus
+  returns 405 and must be removed entirely.
+
+SCOPE — FILES (touch nothing else)
+1. MODIFY: artifacts/api-server/src/lib/espn.ts
+2. CREATE: artifacts/api-server/src/lib/__tests__/espn-discovery.test.ts
+   (if existing tests for espn.ts live in a different folder, place the new test file
+   beside them instead and state the actual path in the report)
+Do NOT modify routes, UI, fetchLeagueData, buildHeaders, sessions, or
+scripts/espn-fan-probe.mjs.
+
+CHANGES TO espn.ts
+
+A. Add a new exported pure helper (data filtering only, no network calls):
+   export function extractFootballLeagueIds(fanData: unknown, season: number): string[]
+   - Read fanData.preferences if it is an array; otherwise return [].
+   - Keep preferences where typeId === 9 AND metaData.entry.abbrev === "FFL"
+     AND metaData.entry.seasonId === season.
+   - Collect String(groupId) from every metaData.entry.groups[] item with a
+     non-null groupId.
+   - De-duplicate and return. Use optional chaining throughout so malformed
+     items are skipped, never crash.
+
+B. Rewrite getUserLeagueIds(creds, season):
+   - url = "https://fan.api.espn.com/apis/v2/fans/" + encodeURIComponent(creds.swid.trim())
+     (curly braces stay in).
+   - headers = { ...buildHeaders(creds), Accept: "application/json" }.
+   - fetch; if !resp.ok: log a warning with the STATUS CODE ONLY — never log the URL
+     or headers, because the SWID is inside the URL — and
+     throw new Error("ESPN Fan API returned <status>. Please re-check your ESPN connection.").
+   - On ok: parse JSON and return extractFootballLeagueIds(data, season).
+   - An empty result after a 200 is legitimate (the account has no football leagues
+     that season) — return the empty array, do NOT throw.
+   - DELETE from this function: the proTeamSchedules_wl fetch whose response was
+     discarded, the unused constants leaguesUrl, swidClean, profileUrl, favoritesUrl,
+     the old meUrl 405 call, and the silent trailing "return []".
+
+C. Clean fetchUserLeagues:
+   - DELETE the unused constants: url (leagueHistory), swid, meUrl (registerdisney),
+     leaguesUrl, memberUrl, and the unused headers line.
+   - Keep the leagueIds loop and the fetchLeagueData calls unchanged.
+   - In the outer catch: keep the error log (never include credentials or URLs in log
+     fields), then rethrow the original error if it is an Error instance so the real
+     reason (e.g. "ESPN Fan API returned 401") reaches the caller; only fall back to
+     the generic message otherwise.
+
+TESTS — the new test file (same framework and patterns as the existing suite)
+Build a small synthetic fixture shaped exactly like the probe output. Do NOT use real
+ids or league names — invent values. Cases:
+1. One valid preference (typeId 9, abbrev "FFL", matching seasonId,
+   groups[0].groupId 123456789) → expect ["123456789"].
+2. A decoy with typeId 9 but abbrev "FLB" → excluded.
+3. An FFL preference with a different seasonId → excluded.
+4. fanData with missing or non-array preferences → [].
+5. The same groupId appearing in two valid preferences → returned once.
+
+SMOKE TEST (run it, do not commit it)
+Using the ESPN_S2 and SWID Replit Secrets, run a one-off inline eval (or a temporary
+file you DELETE before the diff) that imports fetchUserLeagues from espn.ts, builds
+credentials from those env vars in the same shape the app uses, calls it for season
+2026, and prints ONLY: "LEAGUES FOUND: <count>" plus each league's name. Never print
+credentials, URLs, or headers.
+
+DEAD-CODE PROOF
+Run and capture:
+grep -n "registerdisney\|proTeamSchedules_wl\|filterLeagueIds\|kona_player_info\|leagueHistory" artifacts/api-server/src/lib/espn.ts
+Expected: no output. If anything matches, explain why it must stay.
+
+RUN
+- Full test suite. Expect all 98 previous tests plus the new ones, all passing.
+
+DO NOT PUSH YET. When done, ask the owner for permission and wait. Only push after
+the owner replies with the single word: Push
+
+End your work summary with a section titled exactly "VERIFICATION REPORT" containing ONLY:
+1. The final source code, verbatim, of these three functions only:
+   extractFootballLeagueIds, getUserLeagueIds, fetchUserLeagues.
+2. The dead-code grep command and its full output.
+3. The smoke test's printed output.
+4. The test suite summary line.
+5. The actual path of the new test file.
+
+final message: only git diff --stat output
