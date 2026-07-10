@@ -11,7 +11,7 @@ import type {
   LeagueSettings,
   Player,
   TeamRoster,
-} from "../types/league.ts";
+} from "../types/league";
 
 // ─── ESPN Input Types (local, no api-server import) ───────────────────────────
 

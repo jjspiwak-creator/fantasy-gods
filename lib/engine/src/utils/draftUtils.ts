@@ -1,4 +1,4 @@
-import type { LeagueSettings, TeamRoster, DraftSlot, MatchupSchedule, Matchup } from "../types/league.ts";
+import type { LeagueSettings, TeamRoster, DraftSlot, MatchupSchedule, Matchup } from "../types/league";
 
 // ─── Draft Matrix Generation ─────────────────────────────────────────────────
 

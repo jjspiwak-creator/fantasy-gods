@@ -5,8 +5,8 @@ import type {
   TransactionMove,
   DropDestination,
   PlayerHistoryFrame,
-} from "../types/league.ts";
-import { recomputeMostRecentFlags } from "./valuationEngine.ts";
+} from "../types/league";
+import { recomputeMostRecentFlags } from "./valuationEngine";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

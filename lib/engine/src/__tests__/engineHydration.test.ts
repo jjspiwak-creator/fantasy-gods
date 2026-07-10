@@ -6,7 +6,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildEngineState, toEspnLeagueSettings } from "../utils/engineHydration.ts";
+import { buildEngineState, toEspnLeagueSettings } from "../utils/engineHydration";
 import type { Team, LeagueSettings as ApiLeagueSettings } from "@workspace/api-client-react";
 
 // ─── Fixture (shaped like real API response) ──────────────────────────────────

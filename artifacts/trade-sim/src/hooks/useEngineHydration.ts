@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { buildEngineState } from "@/utils/engineHydration";
+import { buildEngineState } from "@workspace/engine";
 import { useLeagueState } from "@/context/LeagueStateContext";
 import { useLeagueSettings } from "@/hooks/use-espn-api";
 import type { Team } from "@workspace/api-client-react";

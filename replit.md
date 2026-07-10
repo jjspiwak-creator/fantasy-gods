@@ -6,7 +6,7 @@ Fantasy Gods is a league-agnostic fantasy football war room. It is built for any
 
 **Module 1: Multi-Team Trade Simulator** — simulate trades between any number of teams simultaneously, a feature no native platform offers.
 
-The single source of truth engine lives in `artifacts/trade-sim/src` (types, utils, context). `artifacts/api-server/src/lib/tradeSimulator.ts` is legacy and will be unified into the engine in a later work order. `artifacts/trade-sim-mobile` is parked — do not build there unless explicitly ordered. It is also excluded from the aggregate typecheck gate until unparked.
+The single source of truth engine lives in `lib/engine/src` (types, utils, context). `artifacts/api-server/src/lib/tradeSimulator.ts` is legacy and will be unified into the engine in a later work order. `artifacts/trade-sim-mobile` is parked — do not build there unless explicitly ordered. It is also excluded from the aggregate typecheck gate until unparked.
 
 ## Stack
 
@@ -33,7 +33,8 @@ artifacts-monorepo/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
+│   ├── db/                 # Drizzle ORM schema + DB connection
+│   └── engine/             # PRIMARY engine home — types, utils, ESPN adapter
 ├── scripts/                # Utility scripts
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
@@ -41,16 +42,19 @@ artifacts-monorepo/
 └── package.json
 ```
 
-## Engine Source of Truth (`artifacts/trade-sim/src`)
+## Engine Source of Truth (`lib/engine/src`)
 
 | Path | Role |
 |------|------|
-| `src/types/league.ts` | All canonical type definitions |
-| `src/utils/transactionHandler.ts` | Atomic transactions, move execution, drop routing |
-| `src/utils/valuationEngine.ts` | ROS valuation, undo stack, most-recent flags |
-| `src/utils/draftUtils.ts` | Draft matrix and schedule generation |
-| `src/context/LeagueStateContext.tsx` | React context + reducer wrapping the engine |
-| `src/__tests__/leagueEngine.test.ts` | Engine unit tests (node:test) |
+| `lib/engine/src/types/league.ts` | All canonical type definitions |
+| `lib/engine/src/utils/transactionHandler.ts` | Atomic transactions, move execution, drop routing |
+| `lib/engine/src/utils/valuationEngine.ts` | ROS valuation, undo stack, most-recent flags |
+| `lib/engine/src/utils/draftUtils.ts` | Draft matrix and schedule generation |
+| `lib/engine/src/adapters/espnAdapter.ts` | ESPN → engine type adapter |
+| `lib/engine/src/utils/engineHydration.ts` | API response → engine state hydration |
+| `lib/engine/src/__tests__/` | Engine unit tests (node:test) |
+
+Note: `artifacts/trade-sim/src/context/LeagueStateContext.tsx` remains the React context + reducer wrapping the engine (not moved — it uses React).
 
 ## Key Architectural Rules
 
@@ -82,7 +86,7 @@ Every package extends `tsconfig.base.json` which sets `composite: true`.
 - `pnpm run typecheck` — full typecheck
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API types after spec changes
 - `pnpm --filter @workspace/db run push` — push DB schema changes
-- `pnpm --filter @workspace/trade-sim run test` — run engine unit tests
+- `pnpm --filter @workspace/engine run test` — run engine unit tests
 
 ## Key Documents
 

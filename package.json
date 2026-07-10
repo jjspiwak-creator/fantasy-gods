@@ -7,7 +7,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"!@workspace/trade-sim-mobile\" --filter \"./scripts\" --if-present run typecheck",
-    "test": "node --import tsx/esm --test artifacts/trade-sim/src/__tests__/*.test.ts artifacts/api-server/src/lib/__tests__/*.test.ts"
+    "test": "node --import tsx/esm --test lib/engine/src/__tests__/*.test.ts artifacts/api-server/src/lib/__tests__/*.test.ts"
   },
   "private": true,
   "devDependencies": {

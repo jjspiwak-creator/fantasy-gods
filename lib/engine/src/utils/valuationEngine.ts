@@ -1,4 +1,4 @@
-import type { Player, LeagueSettings, PlayerHistoryFrame, TeamRoster } from "../types/league.ts";
+import type { Player, LeagueSettings, PlayerHistoryFrame, TeamRoster } from "../types/league";
 
 const SEASON_END_WEEK = 17;
 

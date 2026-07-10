@@ -12,11 +12,11 @@ import type {
   DraftSlot,
   MatchupSchedule,
   Matchup,
-} from "@/types/league";
-import { generateDraftMatrix } from "@/utils/draftUtils";
+} from "@workspace/engine";
+import { generateDraftMatrix } from "@workspace/engine";
 
 // Re-export so any consumers importing from this module continue to work.
-export { generateDraftMatrix } from "@/utils/draftUtils";
+export { generateDraftMatrix } from "@workspace/engine";
 
 // ─── State Shape ─────────────────────────────────────────────────────────────
 

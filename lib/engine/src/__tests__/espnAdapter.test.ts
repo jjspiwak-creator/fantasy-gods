@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import {
   adaptEspnLeague,
   type EspnLeagueInput,
-} from "../adapters/espnAdapter.ts";
-import { executeTransaction } from "../utils/transactionHandler.ts";
+} from "../adapters/espnAdapter";
+import { executeTransaction } from "../utils/transactionHandler";
 
 // ─── Fixture 1: Realistic 10-team league ─────────────────────────────────────
 // Two fully rostered teams, six players total, one FLEX slot, FAAB budget.

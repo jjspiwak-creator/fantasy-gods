@@ -1,19 +1,19 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 
-import { generateDraftMatrix } from "../utils/draftUtils.ts";
+import { generateDraftMatrix } from "../utils/draftUtils";
 import {
   setPlayerSelection,
   clearPlayerSelection,
   executeMoveTransaction,
   routeDroppedPlayer,
-} from "../utils/transactionHandler.ts";
-import { undoLastPlayerMove } from "../utils/valuationEngine.ts";
+} from "../utils/transactionHandler";
+import { undoLastPlayerMove } from "../utils/valuationEngine";
 import type {
   LeagueSettings,
   Player,
   TeamRoster,
-} from "../types/league.ts";
+} from "../types/league";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
