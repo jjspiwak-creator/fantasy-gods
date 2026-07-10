@@ -6,7 +6,7 @@ Fantasy Gods is a league-agnostic fantasy football war room. It is built for any
 
 **Module 1: Multi-Team Trade Simulator** — simulate trades between any number of teams simultaneously, a feature no native platform offers.
 
-The single source of truth engine lives in `artifacts/trade-sim/src` (types, utils, context). `artifacts/api-server/src/lib/tradeSimulator.ts` is legacy and will be unified into the engine in a later work order. `artifacts/trade-sim-mobile` is parked — do not build there unless explicitly ordered.
+The single source of truth engine lives in `artifacts/trade-sim/src` (types, utils, context). `artifacts/api-server/src/lib/tradeSimulator.ts` is legacy and will be unified into the engine in a later work order. `artifacts/trade-sim-mobile` is parked — do not build there unless explicitly ordered. It is also excluded from the aggregate typecheck gate until unparked.
 
 ## Stack
 
