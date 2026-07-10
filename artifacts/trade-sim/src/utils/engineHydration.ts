@@ -36,7 +36,7 @@
  *    the correct numeric counterpart; handled explicitly in API_POSITION_ID.
  */
 
-import type { Team as ApiTeam } from "@workspace/api-client-react";
+import type { Team as ApiTeam, LeagueSettings as ApiLeagueSettings } from "@workspace/api-client-react";
 import { adaptEspnLeague } from "../adapters/espnAdapter";
 import type {
   EspnLeagueInput,
@@ -131,6 +131,47 @@ function buildDefaultSettings(teamCount: number): EspnLeagueSettings {
   };
 }
 
+// ─── Real league settings adapter ──────────────────────────────────────────────
+
+/**
+ * Maps the real GET /api/espn/leagues/{id}/settings response (ApiLeagueSettings)
+ * into the EspnLeagueSettings shape consumed by adaptEspnLeague.
+ *
+ * financeSettings is only populated when isUsingAcquisitionBudget === true.
+ * ESPN returns a nonzero acquisitionBudget even for non-FAAB leagues, so
+ * passing it through unconditionally would wrongly set totalAuctionBudget
+ * and seed FAAB balances on every team in a traditional (non-FAAB) league.
+ *
+ * tradeSettings is fetched by the API but intentionally unused here.
+ * useLeagueMedian is not present in the API payload — omitted so the
+ * adapter's default (false) applies.
+ */
+export function toEspnLeagueSettings(api: ApiLeagueSettings): EspnLeagueSettings {
+  const { acquisitionSettings } = api;
+
+  return {
+    name: api.name,
+    size: api.size,
+    draftSettings: {
+      type: api.draftSettings.type,
+      timePerSelection: api.draftSettings.timePerSelection,
+    },
+    rosterSettings: {
+      lineupSlotCounts: api.rosterSettings.lineupSlotCounts,
+    },
+    scoringSettings: {
+      scoringType: api.scoringSettings.scoringType,
+      scoringItems: api.scoringSettings.scoringItems,
+    },
+    waiverSettings: {
+      type: acquisitionSettings.acquisitionType,
+    },
+    ...(acquisitionSettings.isUsingAcquisitionBudget
+      ? { financeSettings: { acquisitionBudget: acquisitionSettings.acquisitionBudget } }
+      : {}),
+  };
+}
+
 // ─── Entry-point ──────────────────────────────────────────────────────────────
 
 export interface EngineHydrationResult {
@@ -144,12 +185,17 @@ export interface EngineHydrationResult {
  * and receive the (settings, players, teams) triple ready to dispatch into
  * LeagueStateContext.
  *
- * @param leagueId  The league ID string (from the URL param).
- * @param apiTeams  The Team[] array returned by getLeagueTeams().
+ * @param leagueId     The league ID string (from the URL param).
+ * @param apiTeams     The Team[] array returned by getLeagueTeams().
+ * @param apiSettings  Optional real rulebook from getLeagueSettings(). When
+ *                     provided, it replaces the synthesized defaults. When
+ *                     absent, buildDefaultSettings(apiTeams.length) is used
+ *                     exactly as before (manual/fallback leagues).
  */
 export function buildEngineState(
   leagueId: string,
   apiTeams: ApiTeam[],
+  apiSettings?: ApiLeagueSettings,
 ): EngineHydrationResult {
   const espnTeams: EspnTeamInput[] = apiTeams.map((t) => {
     const entries: EspnRosterEntry[] = t.roster.map((p) => {
@@ -198,7 +244,9 @@ export function buildEngineState(
 
   const payload: EspnLeagueInput = {
     id:      leagueId,
-    settings: buildDefaultSettings(apiTeams.length), // difference #1: no settings on /teams
+    settings: apiSettings
+      ? toEspnLeagueSettings(apiSettings)
+      : buildDefaultSettings(apiTeams.length), // difference #1: no settings on /teams
     teams:    espnTeams,
   };
 

@@ -6,8 +6,8 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildEngineState } from "../utils/engineHydration.ts";
-import type { Team } from "@workspace/api-client-react";
+import { buildEngineState, toEspnLeagueSettings } from "../utils/engineHydration.ts";
+import type { Team, LeagueSettings as ApiLeagueSettings } from "@workspace/api-client-react";
 
 // ─── Fixture (shaped like real API response) ──────────────────────────────────
 
@@ -207,5 +207,121 @@ describe("buildEngineState — settings defaults", () => {
 
   it("settings.slotRequirements has at least one key (roster slots configured)", () => {
     assert.ok(Object.keys(settings.slotRequirements).length > 0);
+  });
+});
+
+// ─── Real settings fixture (shaped like real API /settings response) ─────────
+
+function buildScoringItems(count: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    statId: 1000 + i, // deliberately outside ESPN_STAT_KEYS's named IDs — every item is distinct
+    points: 1,
+    pointsOverrides: {},
+    isReverseItem: false,
+  }));
+}
+
+function makeApiSettingsFixture(overrides: {
+  isUsingAcquisitionBudget: boolean;
+  acquisitionBudget: number;
+}): ApiLeagueSettings {
+  return {
+    name: "League of Game Changers",
+    size: 4,
+    draftSettings: {
+      type: "SNAKE",
+      timePerSelection: 15,
+      auctionBudget: 0,
+      pickOrder: [],
+    },
+    rosterSettings: {
+      lineupSlotCounts: {
+        "0": 1, "2": 2, "4": 2, "6": 1, "23": 1, "17": 1, "16": 1, "20": 7,
+      },
+    },
+    scoringSettings: {
+      scoringType: "H2H_POINTS",
+      scoringItems: buildScoringItems(46),
+    },
+    acquisitionSettings: {
+      acquisitionType: "WAIVERS_TRADITIONAL",
+      acquisitionBudget: overrides.acquisitionBudget,
+      isUsingAcquisitionBudget: overrides.isUsingAcquisitionBudget,
+      minimumBid: 0,
+      waiverHours: 0,
+      waiverProcessDays: [],
+      waiverProcessHour: 0,
+      waiverOrderReset: false,
+    },
+    tradeSettings: {
+      deadlineDate: 0,
+      max: 0,
+      revisionHours: 0,
+      vetoVotesRequired: 0,
+      allowOutOfUniverse: false,
+    },
+  };
+}
+
+describe("toEspnLeagueSettings", () => {
+  it("puts acquisitionSettings.acquisitionType into waiverSettings.type", () => {
+    const api = makeApiSettingsFixture({ isUsingAcquisitionBudget: false, acquisitionBudget: 100 });
+    const espn = toEspnLeagueSettings(api);
+    assert.strictEqual(espn.waiverSettings?.type, "WAIVERS_TRADITIONAL");
+  });
+
+  it("isUsingAcquisitionBudget:false + budget 100 -> no financeSettings, no totalAuctionBudget on engine settings", () => {
+    const api = makeApiSettingsFixture({ isUsingAcquisitionBudget: false, acquisitionBudget: 100 });
+    const espn = toEspnLeagueSettings(api);
+    assert.strictEqual(espn.financeSettings, undefined);
+
+    const { settings } = buildEngineState("123", REAL_SHAPE_FIXTURE, api);
+    assert.strictEqual(settings.totalAuctionBudget, undefined);
+  });
+
+  it("isUsingAcquisitionBudget:true + budget 200 -> totalAuctionBudget 200", () => {
+    const api = makeApiSettingsFixture({ isUsingAcquisitionBudget: true, acquisitionBudget: 200 });
+    const espn = toEspnLeagueSettings(api);
+    assert.strictEqual(espn.financeSettings?.acquisitionBudget, 200);
+
+    const { settings } = buildEngineState("123", REAL_SHAPE_FIXTURE, api);
+    assert.strictEqual(settings.totalAuctionBudget, 200);
+  });
+});
+
+describe("buildEngineState — with real apiSettings", () => {
+  const api = makeApiSettingsFixture({ isUsingAcquisitionBudget: false, acquisitionBudget: 100 });
+  const { settings } = buildEngineState("123", REAL_SHAPE_FIXTURE, api);
+
+  it("scoringRules has exactly 46 keys", () => {
+    assert.strictEqual(Object.keys(settings.scoringRules).length, 46);
+  });
+
+  it("draftClockDuration is 15", () => {
+    assert.strictEqual(settings.draftClockDuration, 15);
+  });
+
+  it("draftType is 'snake'", () => {
+    assert.strictEqual(settings.draftType, "snake");
+  });
+
+  it("waiverSystem is 'rolling_priority'", () => {
+    assert.strictEqual(settings.waiverSystem, "rolling_priority");
+  });
+});
+
+describe("buildEngineState — without apiSettings still returns synthesized defaults", () => {
+  const { settings } = buildEngineState("123", REAL_SHAPE_FIXTURE);
+
+  it("draftType is 'snake' (synthesised default)", () => {
+    assert.strictEqual(settings.draftType, "snake");
+  });
+
+  it("scoringRules is empty (no real scoringItems)", () => {
+    assert.strictEqual(Object.keys(settings.scoringRules).length, 0);
+  });
+
+  it("totalAuctionBudget is undefined (no FAAB in default template)", () => {
+    assert.strictEqual(settings.totalAuctionBudget, undefined);
   });
 });

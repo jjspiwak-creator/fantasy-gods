@@ -3,6 +3,7 @@ import {
   connectEspn, 
   getLeagues, 
   getLeagueTeams,
+  getLeagueSettings,
   simulateTrade,
   getSavedTrades,
   saveTrade,
@@ -61,6 +62,15 @@ export function useLeagueTeams(leagueId: string) {
   return useQuery({
     queryKey: ['leagueTeams', leagueId, sessionId],
     queryFn: () => getLeagueTeams(leagueId, { sessionId: sessionId! }),
+    enabled: !!sessionId && !!leagueId,
+  });
+}
+
+export function useLeagueSettings(leagueId: string) {
+  const sessionId = useSession(s => s.sessionId);
+  return useQuery({
+    queryKey: ['leagueSettings', leagueId, sessionId],
+    queryFn: () => getLeagueSettings(leagueId, { sessionId: sessionId! }),
     enabled: !!sessionId && !!leagueId,
   });
 }

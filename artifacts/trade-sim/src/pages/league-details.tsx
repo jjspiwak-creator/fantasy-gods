@@ -35,6 +35,13 @@ export function LeagueDetailsPage() {
               Engine: {playerCount} players · {teamCount} teams
             </span>
           )}
+          {playerCount > 0 && (
+            <span className="inline-flex items-center gap-1 mt-2 text-xs font-mono px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary/80 block w-fit">
+              {Object.keys(state.settings.scoringRules).length > 0
+                ? `Rulebook: live · ${Object.keys(state.settings.scoringRules).length} rules · ${state.settings.draftClockDuration}s clock · ${state.settings.waiverSystem}`
+                : "Rulebook: default"}
+            </span>
+          )}
         </div>
         <Link href={`/leagues/${leagueId}/trade-builder`}>
           <button className="px-6 py-3 rounded-xl font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 box-glow hover:-translate-y-0.5 transition-all flex items-center gap-2">

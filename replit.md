@@ -65,6 +65,7 @@ artifacts-monorepo/
 - `POST /api/espn/connect` — Authenticate with ESPN credentials
 - `GET /api/espn/leagues` — Get user's leagues
 - `GET /api/espn/leagues/:leagueId/teams` — Get teams + rosters in a league
+- `GET /api/espn/leagues/:leagueId/settings` — league rulebook (scoring, roster, waivers, draft)
 - `POST /api/trades/simulate` — Simulate a multi-team trade (no DB write, pure calculation)
 - `GET /api/trades/saved` — List saved trades for a session
 - `POST /api/trades/saved` — Save a trade scenario

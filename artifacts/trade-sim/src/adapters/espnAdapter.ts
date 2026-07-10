@@ -293,6 +293,8 @@ function mapWaiverSystem(
   switch (espnType) {
     case "TRADITIONAL":
       return "rolling_priority";
+    case "WAIVERS_TRADITIONAL":
+      return "rolling_priority";
     case "INVERSE_STANDINGS":
       return "inverse_standings";
     case "FAAB":
