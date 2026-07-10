@@ -370,7 +370,7 @@ export function computeLeagueSummary(
         pos,
         buildPositionalGrade(m.posVorpRaw[pos], leaguePosAvg[pos]),
       ]),
-    ) as TeamPositionalGrades;
+    ) as unknown as TeamPositionalGrades;
 
     return {
       teamId: m.teamId,
