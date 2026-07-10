@@ -21,11 +21,13 @@ import type {
   ErrorResponse,
   EspnConnectBody,
   EspnConnectResponse,
+  GetLeagueSettingsParams,
   GetLeagueTeamsParams,
   GetLeaguesParams,
   GetSavedTradesParams,
   HealthStatus,
   League,
+  LeagueSettings,
   LoginBody,
   RefreshSavedTradeParams,
   RegisterBody,
@@ -410,6 +412,127 @@ export function useGetLeagueTeams<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetLeagueTeamsQueryOptions(leagueId, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns roster, scoring, draft, waiver, and trade rules for the specified league
+ * @summary Get league settings
+ */
+export const getGetLeagueSettingsUrl = (
+  leagueId: string,
+  params: GetLeagueSettingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/espn/leagues/${leagueId}/settings?${stringifiedParams}`
+    : `/api/espn/leagues/${leagueId}/settings`;
+};
+
+export const getLeagueSettings = async (
+  leagueId: string,
+  params: GetLeagueSettingsParams,
+  options?: RequestInit,
+): Promise<LeagueSettings> => {
+  return customFetch<LeagueSettings>(
+    getGetLeagueSettingsUrl(leagueId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetLeagueSettingsQueryKey = (
+  leagueId: string,
+  params?: GetLeagueSettingsParams,
+) => {
+  return [
+    `/api/espn/leagues/${leagueId}/settings`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetLeagueSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeagueSettings>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  leagueId: string,
+  params: GetLeagueSettingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeagueSettings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLeagueSettingsQueryKey(leagueId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLeagueSettings>>
+  > = ({ signal }) =>
+    getLeagueSettings(leagueId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!leagueId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeagueSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeagueSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeagueSettings>>
+>;
+export type GetLeagueSettingsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get league settings
+ */
+
+export function useGetLeagueSettings<
+  TData = Awaited<ReturnType<typeof getLeagueSettings>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  leagueId: string,
+  params: GetLeagueSettingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeagueSettings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeagueSettingsQueryOptions(
+    leagueId,
+    params,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

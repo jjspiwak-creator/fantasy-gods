@@ -7,8 +7,11 @@ import {
   GetLeagueTeamsParams,
   GetLeagueTeamsQueryParams,
   GetLeagueTeamsResponse,
+  GetLeagueSettingsParams,
+  GetLeagueSettingsQueryParams,
+  GetLeagueSettingsResponse,
 } from "@workspace/api-zod";
-import { fetchUserLeagues, fetchLeagueTeams, verifyCredentials } from "../lib/espn";
+import { fetchUserLeagues, fetchLeagueTeams, fetchLeagueSettings, verifyCredentials } from "../lib/espn";
 import { createSession, getSession } from "../lib/sessions";
 
 const router: IRouter = Router();
@@ -99,6 +102,35 @@ router.get("/espn/leagues/:leagueId/teams", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch league teams");
     res.status(500).json({ error: "Failed to fetch teams from ESPN. Please check your credentials and league ID." });
+  }
+});
+
+router.get("/espn/leagues/:leagueId/settings", async (req, res): Promise<void> => {
+  const pathParams = GetLeagueSettingsParams.safeParse(req.params);
+  if (!pathParams.success) {
+    res.status(400).json({ error: "Invalid league ID" });
+    return;
+  }
+
+  const queryParams = GetLeagueSettingsQueryParams.safeParse(req.query);
+  if (!queryParams.success) {
+    res.status(400).json({ error: "sessionId is required" });
+    return;
+  }
+
+  const creds = await getSession(queryParams.data.sessionId);
+  if (!creds) {
+    res.status(401).json({ error: "Session not found or expired. Please reconnect your ESPN account." });
+    return;
+  }
+
+  try {
+    const season = queryParams.data.season ? parseInt(queryParams.data.season, 10) : new Date().getFullYear();
+    const settings = await fetchLeagueSettings(creds, pathParams.data.leagueId, season);
+    res.json(GetLeagueSettingsResponse.parse(settings));
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch league settings");
+    res.status(502).json({ error: "Failed to fetch league settings from ESPN. Please check your credentials and league ID." });
   }
 });
 

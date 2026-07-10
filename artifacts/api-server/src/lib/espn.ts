@@ -26,6 +26,48 @@ export interface EspnPlayer {
   injuryStatus: string | null;
 }
 
+export interface EspnScoringItem {
+  statId: number;
+  points: number;
+  pointsOverrides: Record<string, unknown>;
+  isReverseItem: boolean;
+}
+
+export interface EspnLeagueSettings {
+  name: string;
+  size: number;
+  draftSettings: {
+    type: string;
+    timePerSelection: number;
+    auctionBudget: number;
+    pickOrder: number[];
+  };
+  rosterSettings: {
+    lineupSlotCounts: Record<string, number>;
+  };
+  scoringSettings: {
+    scoringType: string;
+    scoringItems: EspnScoringItem[];
+  };
+  acquisitionSettings: {
+    acquisitionType: string;
+    acquisitionBudget: number;
+    isUsingAcquisitionBudget: boolean;
+    minimumBid: number;
+    waiverHours: number;
+    waiverProcessDays: string[];
+    waiverProcessHour: number;
+    waiverOrderReset: boolean;
+  };
+  tradeSettings: {
+    deadlineDate: number;
+    max: number;
+    revisionHours: number;
+    vetoVotesRequired: number;
+    allowOutOfUniverse: boolean;
+  };
+}
+
 export interface EspnTeam {
   id: string;
   name: string;
@@ -202,6 +244,120 @@ export async function fetchLeagueTeams(creds: EspnCredentials, leagueId: string,
       roster,
     };
   });
+}
+
+export async function fetchLeagueSettings(creds: EspnCredentials, leagueId: string, season = new Date().getFullYear()): Promise<EspnLeagueSettings> {
+  const url = `${ESPN_BASE}/seasons/${season}/segments/0/leagues/${leagueId}?view=mSettings`;
+  const headers = buildHeaders(creds);
+
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) {
+    logger.error(
+      { url, status: resp.status, leagueId, season },
+      "ESPN fetchLeagueSettings non-OK response"
+    );
+    throw new Error(`ESPN API returned ${resp.status} for league ${leagueId} settings`);
+  }
+
+  const data: any = await resp.json();
+  const settings = data.settings;
+
+  if (!settings || typeof settings !== "object") {
+    throw new Error(`ESPN settings response for league ${leagueId} is missing the settings object`);
+  }
+
+  const missing: string[] = [];
+  if (typeof settings.name !== "string") missing.push("name");
+  if (typeof settings.size !== "number") missing.push("size");
+
+  const draft = settings.draftSettings;
+  if (!draft) missing.push("draftSettings");
+  else {
+    if (typeof draft.type !== "string") missing.push("draftSettings.type");
+    if (typeof draft.timePerSelection !== "number") missing.push("draftSettings.timePerSelection");
+    if (typeof draft.auctionBudget !== "number") missing.push("draftSettings.auctionBudget");
+    if (!Array.isArray(draft.pickOrder)) missing.push("draftSettings.pickOrder");
+  }
+
+  const roster = settings.rosterSettings;
+  if (!roster) missing.push("rosterSettings");
+  else if (!roster.lineupSlotCounts || typeof roster.lineupSlotCounts !== "object") {
+    missing.push("rosterSettings.lineupSlotCounts");
+  }
+
+  const scoring = settings.scoringSettings;
+  if (!scoring) missing.push("scoringSettings");
+  else {
+    if (typeof scoring.scoringType !== "string") missing.push("scoringSettings.scoringType");
+    if (!Array.isArray(scoring.scoringItems)) missing.push("scoringSettings.scoringItems");
+  }
+
+  const acquisition = settings.acquisitionSettings;
+  if (!acquisition) missing.push("acquisitionSettings");
+  else {
+    if (typeof acquisition.acquisitionType !== "string") missing.push("acquisitionSettings.acquisitionType");
+    if (typeof acquisition.acquisitionBudget !== "number") missing.push("acquisitionSettings.acquisitionBudget");
+    if (typeof acquisition.isUsingAcquisitionBudget !== "boolean") missing.push("acquisitionSettings.isUsingAcquisitionBudget");
+    if (typeof acquisition.minimumBid !== "number") missing.push("acquisitionSettings.minimumBid");
+    if (typeof acquisition.waiverHours !== "number") missing.push("acquisitionSettings.waiverHours");
+    if (!Array.isArray(acquisition.waiverProcessDays)) missing.push("acquisitionSettings.waiverProcessDays");
+    if (typeof acquisition.waiverProcessHour !== "number") missing.push("acquisitionSettings.waiverProcessHour");
+    if (typeof acquisition.waiverOrderReset !== "boolean") missing.push("acquisitionSettings.waiverOrderReset");
+  }
+
+  const trade = settings.tradeSettings;
+  if (!trade) missing.push("tradeSettings");
+  else {
+    if (typeof trade.deadlineDate !== "number") missing.push("tradeSettings.deadlineDate");
+    if (typeof trade.max !== "number") missing.push("tradeSettings.max");
+    if (typeof trade.revisionHours !== "number") missing.push("tradeSettings.revisionHours");
+    if (typeof trade.vetoVotesRequired !== "number") missing.push("tradeSettings.vetoVotesRequired");
+    if (typeof trade.allowOutOfUniverse !== "boolean") missing.push("tradeSettings.allowOutOfUniverse");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`ESPN settings response for league ${leagueId} is missing required fields: ${missing.join(", ")}`);
+  }
+
+  return {
+    name: settings.name,
+    size: settings.size,
+    draftSettings: {
+      type: draft.type,
+      timePerSelection: draft.timePerSelection,
+      auctionBudget: draft.auctionBudget,
+      pickOrder: draft.pickOrder,
+    },
+    rosterSettings: {
+      lineupSlotCounts: roster.lineupSlotCounts,
+    },
+    scoringSettings: {
+      scoringType: scoring.scoringType,
+      scoringItems: scoring.scoringItems.map((item: any) => ({
+        statId: item.statId,
+        points: item.points,
+        pointsOverrides: item.pointsOverrides ?? {},
+        isReverseItem: !!item.isReverseItem,
+      })),
+    },
+    acquisitionSettings: {
+      acquisitionType: acquisition.acquisitionType,
+      acquisitionBudget: acquisition.acquisitionBudget,
+      isUsingAcquisitionBudget: acquisition.isUsingAcquisitionBudget,
+      minimumBid: acquisition.minimumBid,
+      waiverHours: acquisition.waiverHours,
+      waiverProcessDays: acquisition.waiverProcessDays,
+      waiverProcessHour: acquisition.waiverProcessHour,
+      waiverOrderReset: acquisition.waiverOrderReset,
+    },
+    tradeSettings: {
+      deadlineDate: trade.deadlineDate,
+      max: trade.max,
+      revisionHours: trade.revisionHours,
+      vetoVotesRequired: trade.vetoVotesRequired,
+      allowOutOfUniverse: trade.allowOutOfUniverse,
+    },
+  };
 }
 
 function parseRoster(entries: any[]): EspnPlayer[] {

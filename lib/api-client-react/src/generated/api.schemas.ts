@@ -62,6 +62,64 @@ export interface Team {
   roster: Player[];
 }
 
+export type ScoringItemPointsOverrides = { [key: string]: unknown };
+
+export interface ScoringItem {
+  statId: number;
+  points: number;
+  pointsOverrides: ScoringItemPointsOverrides;
+  isReverseItem: boolean;
+}
+
+export interface LeagueSettingsDraftSettings {
+  type: string;
+  timePerSelection: number;
+  auctionBudget: number;
+  pickOrder: number[];
+}
+
+export type LeagueSettingsRosterSettingsLineupSlotCounts = {
+  [key: string]: number;
+};
+
+export interface LeagueSettingsRosterSettings {
+  lineupSlotCounts: LeagueSettingsRosterSettingsLineupSlotCounts;
+}
+
+export interface LeagueSettingsScoringSettings {
+  scoringType: string;
+  scoringItems: ScoringItem[];
+}
+
+export interface LeagueSettingsAcquisitionSettings {
+  acquisitionType: string;
+  acquisitionBudget: number;
+  isUsingAcquisitionBudget: boolean;
+  minimumBid: number;
+  waiverHours: number;
+  waiverProcessDays: string[];
+  waiverProcessHour: number;
+  waiverOrderReset: boolean;
+}
+
+export interface LeagueSettingsTradeSettings {
+  deadlineDate: number;
+  max: number;
+  revisionHours: number;
+  vetoVotesRequired: number;
+  allowOutOfUniverse: boolean;
+}
+
+export interface LeagueSettings {
+  name: string;
+  size: number;
+  draftSettings: LeagueSettingsDraftSettings;
+  rosterSettings: LeagueSettingsRosterSettings;
+  scoringSettings: LeagueSettingsScoringSettings;
+  acquisitionSettings: LeagueSettingsAcquisitionSettings;
+  tradeSettings: LeagueSettingsTradeSettings;
+}
+
 /**
  * A single player movement from one team to another. Using an explicit origin/destination pair instead of a circular chain lets any team send any player to any other participating team in the same trade.
 
@@ -227,6 +285,11 @@ export type GetLeaguesParams = {
 };
 
 export type GetLeagueTeamsParams = {
+  sessionId: string;
+  season?: string;
+};
+
+export type GetLeagueSettingsParams = {
   sessionId: string;
   season?: string;
 };

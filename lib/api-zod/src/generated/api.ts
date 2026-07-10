@@ -89,6 +89,61 @@ export const GetLeagueTeamsResponseItem = zod.object({
 export const GetLeagueTeamsResponse = zod.array(GetLeagueTeamsResponseItem);
 
 /**
+ * Returns roster, scoring, draft, waiver, and trade rules for the specified league
+ * @summary Get league settings
+ */
+export const GetLeagueSettingsParams = zod.object({
+  leagueId: zod.coerce.string(),
+});
+
+export const GetLeagueSettingsQueryParams = zod.object({
+  sessionId: zod.coerce.string(),
+  season: zod.coerce.string().optional(),
+});
+
+export const GetLeagueSettingsResponse = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  draftSettings: zod.object({
+    type: zod.string(),
+    timePerSelection: zod.number(),
+    auctionBudget: zod.number(),
+    pickOrder: zod.array(zod.number()),
+  }),
+  rosterSettings: zod.object({
+    lineupSlotCounts: zod.record(zod.string(), zod.number()),
+  }),
+  scoringSettings: zod.object({
+    scoringType: zod.string(),
+    scoringItems: zod.array(
+      zod.object({
+        statId: zod.number(),
+        points: zod.number(),
+        pointsOverrides: zod.record(zod.string(), zod.unknown()),
+        isReverseItem: zod.boolean(),
+      }),
+    ),
+  }),
+  acquisitionSettings: zod.object({
+    acquisitionType: zod.string(),
+    acquisitionBudget: zod.number(),
+    isUsingAcquisitionBudget: zod.boolean(),
+    minimumBid: zod.number(),
+    waiverHours: zod.number(),
+    waiverProcessDays: zod.array(zod.string()),
+    waiverProcessHour: zod.number(),
+    waiverOrderReset: zod.boolean(),
+  }),
+  tradeSettings: zod.object({
+    deadlineDate: zod.number(),
+    max: zod.number(),
+    revisionHours: zod.number(),
+    vetoVotesRequired: zod.number(),
+    allowOutOfUniverse: zod.boolean(),
+  }),
+});
+
+/**
  * Simulate a trade involving 2 or more teams using an explicit origin-to-destination matrix. Each transfer specifies exactly which player moves from which team to which team, allowing any topology (A→B, A→C, B→A, etc.) rather than a fixed circular chain.
 
  * @summary Simulate a multi-team trade
