@@ -197,6 +197,49 @@ export const SimulateTradeBody = zod.object({
       ),
     }),
   ),
+  settings: zod
+    .object({
+      name: zod.string(),
+      size: zod.number(),
+      draftSettings: zod.object({
+        type: zod.string(),
+        timePerSelection: zod.number(),
+        auctionBudget: zod.number(),
+        pickOrder: zod.array(zod.number()),
+      }),
+      rosterSettings: zod.object({
+        lineupSlotCounts: zod.record(zod.string(), zod.number()),
+      }),
+      scoringSettings: zod.object({
+        scoringType: zod.string(),
+        scoringItems: zod.array(
+          zod.object({
+            statId: zod.number(),
+            points: zod.number(),
+            pointsOverrides: zod.record(zod.string(), zod.unknown()),
+            isReverseItem: zod.boolean(),
+          }),
+        ),
+      }),
+      acquisitionSettings: zod.object({
+        acquisitionType: zod.string(),
+        acquisitionBudget: zod.number(),
+        isUsingAcquisitionBudget: zod.boolean(),
+        minimumBid: zod.number(),
+        waiverHours: zod.number(),
+        waiverProcessDays: zod.array(zod.string()),
+        waiverProcessHour: zod.number(),
+        waiverOrderReset: zod.boolean(),
+      }),
+      tradeSettings: zod.object({
+        deadlineDate: zod.number(),
+        max: zod.number(),
+        revisionHours: zod.number(),
+        vetoVotesRequired: zod.number(),
+        allowOutOfUniverse: zod.boolean(),
+      }),
+    })
+    .optional(),
 });
 
 export const SimulateTradeResponse = zod.object({

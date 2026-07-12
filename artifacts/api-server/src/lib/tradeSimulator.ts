@@ -1,4 +1,10 @@
-import { EspnPlayer, EspnTeam } from "./espn";
+import type {
+  Team as ApiTeam,
+  LeagueSettings as ApiLeagueSettings,
+  Player as ApiPlayer,
+} from "@workspace/api-zod";
+import { buildEngineState, executeTransaction } from "@workspace/engine";
+import { buildTransactionMoves, SlotResolveError } from "./slotResolver";
 
 export interface PlayerTransfer {
   playerId: string;
@@ -15,10 +21,10 @@ export interface TeamTradeResult {
   teamId: string;
   teamName: string;
   ownerName: string;
-  playersGiven: EspnPlayer[];
-  playersReceived: EspnPlayer[];
-  rosterBefore: EspnPlayer[];
-  rosterAfter: EspnPlayer[];
+  playersGiven: ApiPlayer[];
+  playersReceived: ApiPlayer[];
+  rosterBefore: ApiPlayer[];
+  rosterAfter: ApiPlayer[];
   tradeValueBefore: number;
   tradeValueAfter: number;
   tradeValueChange: number;
@@ -42,6 +48,18 @@ export interface TradeSimulationResult {
    * The frontend shows a soft warning banner when this array is non-empty.
    */
   leagueWarnings: string[];
+}
+
+/**
+ * Thrown when the engine or slot resolver rejects a trade.
+ * Route catches this and responds HTTP 400 with the error message.
+ * All other errors are treated as unexpected and produce HTTP 500.
+ */
+export class TradeRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TradeRejectedError";
+  }
 }
 
 function calculateGrade(
@@ -111,17 +129,21 @@ function calculateGrade(
  * topology — A↔B, A→B + B→C + C→A, A→B + C→B, etc. — without assuming a
  * fixed circular chain.
  *
+ * Engine gate: runs before the legacy value calculation.
+ * If the engine or slot resolver rejects the trade, throws `TradeRejectedError`.
+ *
  * Participating teams are derived automatically from the union of all
  * `fromTeamId` and `toTeamId` values in the transfer list.
  */
 export function simulateTrade(
   leagueId: string,
   transfers: PlayerTransfer[],
-  teams: EspnTeam[]
+  teams: ApiTeam[],
+  settings?: ApiLeagueSettings,
 ): TradeSimulationResult {
-  // Build team and player lookup maps
-  const teamMap: Record<string, EspnTeam> = {};
-  const playerByTeam: Record<string, Record<string, EspnPlayer>> = {};
+  // Build team and player lookup maps for the legacy calc
+  const teamMap: Record<string, ApiTeam> = {};
+  const playerByTeam: Record<string, Record<string, ApiPlayer>> = {};
 
   for (const team of teams) {
     teamMap[team.id] = team;
@@ -129,6 +151,38 @@ export function simulateTrade(
     for (const player of team.roster) {
       playerByTeam[team.id][player.id] = player;
     }
+  }
+
+  // Step 5a: reject unknown players — never skip silently
+  for (const transfer of transfers) {
+    const player = playerByTeam[transfer.fromTeamId]?.[transfer.playerId];
+    if (!player) {
+      throw new TradeRejectedError(
+        `Unknown player '${transfer.playerId}' on team '${transfer.fromTeamId}'`,
+      );
+    }
+  }
+
+  // Engine gate: hydrate, resolve slots, execute atomic transaction.
+  // Any rejection from the engine or slot resolver becomes a TradeRejectedError (→ HTTP 400).
+  // Anything else re-throws as-is (→ HTTP 500 in the route).
+  try {
+    const { players: enginePlayers, teams: engineTeams, settings: engineSettings } =
+      buildEngineState(leagueId, teams as ApiTeam[], settings);
+
+    const moves = buildTransactionMoves(
+      transfers,
+      enginePlayers,
+      engineTeams,
+      engineSettings,
+    );
+
+    executeTransaction(enginePlayers, engineTeams, engineSettings, moves);
+  } catch (err) {
+    if (err instanceof SlotResolveError || err instanceof Error) {
+      throw new TradeRejectedError((err as Error).message);
+    }
+    throw err;
   }
 
   // Derive the full set of participating team IDs from the transfer matrix
@@ -139,8 +193,8 @@ export function simulateTrade(
   }
 
   // Initialize per-team given/received buckets
-  const playersGivenByTeam: Record<string, EspnPlayer[]> = {};
-  const playersReceivedByTeam: Record<string, EspnPlayer[]> = {};
+  const playersGivenByTeam: Record<string, ApiPlayer[]> = {};
+  const playersReceivedByTeam: Record<string, ApiPlayer[]> = {};
   for (const teamId of participatingTeamIds) {
     playersGivenByTeam[teamId] = [];
     playersReceivedByTeam[teamId] = [];
@@ -149,7 +203,8 @@ export function simulateTrade(
   // Resolve each transfer: look up the player on the giving team's original roster
   for (const transfer of transfers) {
     const player = playerByTeam[transfer.fromTeamId]?.[transfer.playerId];
-    if (!player) continue; // silently skip unresolvable players
+    // Unknown players already rejected above; this branch is unreachable.
+    if (!player) throw new TradeRejectedError(`Unknown player '${transfer.playerId}'`);
     playersGivenByTeam[transfer.fromTeamId].push(player);
     playersReceivedByTeam[transfer.toTeamId].push(player);
   }

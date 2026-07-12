@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-zod";
 import { db, savedTradesTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
-import { simulateTrade, type PlayerTransfer } from "../lib/tradeSimulator";
+import { simulateTrade, TradeRejectedError, type PlayerTransfer } from "../lib/tradeSimulator";
 import { fetchLeagueTeams } from "../lib/espn";
 import { getSession } from "../lib/sessions";
 import { extractToken, verifyToken } from "../lib/auth";
@@ -33,7 +33,7 @@ router.post("/trades/simulate", async (req, res): Promise<void> => {
     return;
   }
 
-  const { leagueId, transfers, teams } = parsed.data;
+  const { leagueId, transfers, teams, settings } = parsed.data;
 
   if (transfers.length < 1) {
     res.status(400).json({ error: "A trade must include at least one player transfer." });
@@ -60,11 +60,15 @@ router.post("/trades/simulate", async (req, res): Promise<void> => {
   }
 
   try {
-    const result = simulateTrade(leagueId, transfers as PlayerTransfer[], teams as any);
+    const result = simulateTrade(leagueId, transfers, teams, settings ?? undefined);
     res.json(SimulateTradeResponse.parse(result));
   } catch (err) {
-    req.log.error({ err }, "Trade simulation error");
-    res.status(400).json({ error: "Failed to simulate trade." });
+    if (err instanceof TradeRejectedError) {
+      res.status(400).json({ error: (err as TradeRejectedError).message });
+    } else {
+      req.log.error({ err }, "Trade simulation unexpected error");
+      res.status(500).json({ error: "Internal error" });
+    }
   }
 });
 

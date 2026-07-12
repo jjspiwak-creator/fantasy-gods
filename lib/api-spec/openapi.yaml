@@ -736,6 +736,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Team"
+        settings:
+          $ref: "#/components/schemas/LeagueSettings"
       required:
         - sessionId
         - leagueId

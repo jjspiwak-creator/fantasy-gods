@@ -5,6 +5,7 @@
  * ESPN Fantasy Football Trade Simulator API
  * OpenAPI spec version: 0.1.0
  */
+import type { LeagueSettings } from "./leagueSettings";
 import type { PlayerTransfer } from "./playerTransfer";
 import type { Team } from "./team";
 
@@ -18,4 +19,5 @@ export interface SimulateTradeBody {
    */
   transfers: PlayerTransfer[];
   teams: Team[];
+  settings?: LeagueSettings;
 }

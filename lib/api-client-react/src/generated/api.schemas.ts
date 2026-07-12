@@ -143,6 +143,7 @@ export interface SimulateTradeBody {
    */
   transfers: PlayerTransfer[];
   teams: Team[];
+  settings?: LeagueSettings;
 }
 
 /**

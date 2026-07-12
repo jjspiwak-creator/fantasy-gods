@@ -6,7 +6,7 @@ Fantasy Gods is a league-agnostic fantasy football war room. It is built for any
 
 **Module 1: Multi-Team Trade Simulator** — simulate trades between any number of teams simultaneously, a feature no native platform offers.
 
-The single source of truth engine lives in `lib/engine/src` (types, utils, context). `artifacts/api-server/src/lib/tradeSimulator.ts` is legacy and will be unified into the engine in a later work order. `artifacts/trade-sim-mobile` is parked — do not build there unless explicitly ordered. It is also excluded from the aggregate typecheck gate until unparked.
+The single source of truth engine lives in `lib/engine/src` (types, utils, context). `artifacts/api-server/src/lib/tradeSimulator.ts` now runs an engine gate (slotResolver → executeTransaction) before the legacy value calculation; `TradeRejectedError` signals HTTP 400, all other throws become HTTP 500. `artifacts/trade-sim-mobile` is parked — do not build there unless explicitly ordered. It is also excluded from the aggregate typecheck gate until unparked.
 
 ## Stack
 
@@ -70,7 +70,7 @@ Note: `artifacts/trade-sim/src/context/LeagueStateContext.tsx` remains the React
 - `GET /api/espn/leagues` — Get user's leagues
 - `GET /api/espn/leagues/:leagueId/teams` — Get teams + rosters in a league
 - `GET /api/espn/leagues/:leagueId/settings` — league rulebook (scoring, roster, waivers, draft)
-- `POST /api/trades/simulate` — Simulate a multi-team trade (no DB write, pure calculation)
+- `POST /api/trades/simulate` — Simulate a multi-team trade; accepts optional `settings` (LeagueSettings) to enforce real roster caps and slot eligibility; engine gate rejects illegal trades with HTTP 400
 - `GET /api/trades/saved` — List saved trades for a session
 - `POST /api/trades/saved` — Save a trade scenario
 - `DELETE /api/trades/saved/:tradeId` — Delete a saved trade
