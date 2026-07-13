@@ -26,8 +26,8 @@ The single source of truth engine lives in `lib/engine/src` (types, utils, conte
 ```text
 artifacts-monorepo/
 ├── artifacts/
-│   ├── api-server/         # Express API server (legacy trade simulator — do not extend)
-│   ├── trade-sim/          # React + Vite frontend — PRIMARY engine home
+│   ├── api-server/         # Express API server (engine-gated simulate; legacy value calc pending retirement)
+│   ├── trade-sim/          # React + Vite frontend
 │   └── trade-sim-mobile/   # Expo mobile app — PARKED, do not build unless ordered
 ├── lib/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
