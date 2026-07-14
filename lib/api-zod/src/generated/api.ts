@@ -884,3 +884,147 @@ export const UpdateUserSettingsResponse = zod
     createdAt: zod.string().describe("ISO timestamp"),
   })
   .describe("Logged-in user account details");
+
+/**
+ * @summary Create a manual league
+ */
+export const createManualLeagueBodyNameMax = 60;
+
+export const createManualLeagueBodyTeamCountMin = 2;
+export const createManualLeagueBodyTeamCountMax = 20;
+
+export const createManualLeagueBodyMyTeamNameMax = 60;
+
+export const CreateManualLeagueBody = zod.object({
+  name: zod.string().min(1).max(createManualLeagueBodyNameMax),
+  teamCount: zod
+    .number()
+    .min(createManualLeagueBodyTeamCountMin)
+    .max(createManualLeagueBodyTeamCountMax),
+  myTeamName: zod
+    .string()
+    .min(1)
+    .max(createManualLeagueBodyMyTeamNameMax)
+    .optional(),
+  rosterSlots: zod.record(zod.string(), zod.unknown()),
+  scoringBasics: zod.record(zod.string(), zod.unknown()),
+});
+
+/**
+ * @summary List leagues the caller belongs to
+ */
+export const ListMyManualLeaguesResponseItem = zod.object({
+  league: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    inviteCode: zod.string(),
+    creatorUserId: zod.string(),
+    teamCount: zod.number(),
+    rosterSlots: zod.record(zod.string(), zod.unknown()),
+    scoringBasics: zod.record(zod.string(), zod.unknown()),
+    createdAt: zod.string(),
+  }),
+  myTeamId: zod.string(),
+});
+export const ListMyManualLeaguesResponse = zod.array(
+  ListMyManualLeaguesResponseItem,
+);
+
+/**
+ * @summary Join a league by invite code
+ */
+export const joinManualLeagueBodyTeamNameMax = 60;
+
+export const JoinManualLeagueBody = zod.object({
+  inviteCode: zod.string(),
+  teamName: zod.string().min(1).max(joinManualLeagueBodyTeamNameMax).optional(),
+});
+
+export const JoinManualLeagueResponse = zod.object({
+  league: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    inviteCode: zod.string(),
+    creatorUserId: zod.string(),
+    teamCount: zod.number(),
+    rosterSlots: zod.record(zod.string(), zod.unknown()),
+    scoringBasics: zod.record(zod.string(), zod.unknown()),
+    createdAt: zod.string(),
+  }),
+  myTeam: zod.object({
+    id: zod.string(),
+    leagueId: zod.string(),
+    name: zod.string(),
+    ownerUserId: zod.string().nullish(),
+    createdAt: zod.string(),
+  }),
+});
+
+/**
+ * @summary Get teams in a manual league (member-gated)
+ */
+export const GetManualLeagueTeamsParams = zod.object({
+  leagueId: zod.coerce.string(),
+});
+
+export const GetManualLeagueTeamsResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  abbreviation: zod.string().optional(),
+  ownerName: zod.string(),
+  wins: zod.number(),
+  losses: zod.number(),
+  ties: zod.number(),
+  pointsFor: zod.number(),
+  pointsAgainst: zod.number(),
+  totalTradeValue: zod.number(),
+  roster: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      nflTeam: zod.string(),
+      points: zod.number(),
+      projectedPoints: zod.number(),
+      tradeValue: zod.number(),
+      isStarter: zod.boolean(),
+      injuryStatus: zod.string().nullish(),
+    }),
+  ),
+});
+export const GetManualLeagueTeamsResponse = zod.array(
+  GetManualLeagueTeamsResponseItem,
+);
+
+/**
+ * @summary Add a player to a team (member-gated)
+ */
+export const AddManualPlayerParams = zod.object({
+  leagueId: zod.coerce.string(),
+  teamId: zod.coerce.string(),
+});
+
+export const addManualPlayerBodyNameMax = 60;
+
+export const addManualPlayerBodyPositionMax = 10;
+
+export const addManualPlayerBodyRealTeamMax = 5;
+
+export const addManualPlayerBodyByeWeekMax = 18;
+
+export const AddManualPlayerBody = zod.object({
+  name: zod.string().min(1).max(addManualPlayerBodyNameMax),
+  position: zod.string().min(1).max(addManualPlayerBodyPositionMax),
+  isStarter: zod.boolean().optional(),
+  realTeam: zod.string().max(addManualPlayerBodyRealTeamMax).optional(),
+  byeWeek: zod.number().min(1).max(addManualPlayerBodyByeWeekMax).optional(),
+});
+
+/**
+ * @summary Remove a player from a team (member-gated)
+ */
+export const RemoveManualPlayerParams = zod.object({
+  leagueId: zod.coerce.string(),
+  teamId: zod.coerce.string(),
+  playerId: zod.coerce.string(),
+});

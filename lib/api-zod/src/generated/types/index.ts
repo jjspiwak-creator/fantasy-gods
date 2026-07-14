@@ -6,7 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./addManualPlayerBody";
 export * from "./authToken";
+export * from "./createManualLeagueBody";
+export * from "./createManualLeagueBodyRosterSlots";
+export * from "./createManualLeagueBodyScoringBasics";
 export * from "./errorResponse";
 export * from "./espnConnectBody";
 export * from "./espnConnectResponse";
@@ -15,6 +19,7 @@ export * from "./getLeaguesParams";
 export * from "./getLeagueTeamsParams";
 export * from "./getSavedTradesParams";
 export * from "./healthStatus";
+export * from "./joinManualLeagueBody";
 export * from "./league";
 export * from "./leagueSettings";
 export * from "./leagueSettingsAcquisitionSettings";
@@ -23,7 +28,14 @@ export * from "./leagueSettingsRosterSettings";
 export * from "./leagueSettingsRosterSettingsLineupSlotCounts";
 export * from "./leagueSettingsScoringSettings";
 export * from "./leagueSettingsTradeSettings";
+export * from "./listMyLeagueItem";
 export * from "./loginBody";
+export * from "./manualLeague";
+export * from "./manualLeagueRosterSlots";
+export * from "./manualLeagueScoringBasics";
+export * from "./manualLeagueWithMyTeam";
+export * from "./manualRosterPlayer";
+export * from "./manualTeam";
 export * from "./player";
 export * from "./playerTransfer";
 export * from "./refreshSavedTradeParams";

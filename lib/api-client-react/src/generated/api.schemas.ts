@@ -281,6 +281,107 @@ export interface SavedTrade {
   createdAt: string;
 }
 
+export type ManualLeagueRosterSlots = { [key: string]: unknown };
+
+export type ManualLeagueScoringBasics = { [key: string]: unknown };
+
+export interface ManualLeague {
+  id: string;
+  name: string;
+  inviteCode: string;
+  creatorUserId: string;
+  teamCount: number;
+  rosterSlots: ManualLeagueRosterSlots;
+  scoringBasics: ManualLeagueScoringBasics;
+  createdAt: string;
+}
+
+export interface ManualTeam {
+  id: string;
+  leagueId: string;
+  name: string;
+  /** @nullable */
+  ownerUserId?: string | null;
+  createdAt: string;
+}
+
+export interface ManualRosterPlayer {
+  id: string;
+  teamId: string;
+  name: string;
+  position: string;
+  /** @nullable */
+  realTeam?: string | null;
+  /** @nullable */
+  byeWeek?: number | null;
+  isStarter: boolean;
+  createdAt: string;
+}
+
+export interface ManualLeagueWithMyTeam {
+  league: ManualLeague;
+  myTeam: ManualTeam;
+}
+
+export interface ListMyLeagueItem {
+  league: ManualLeague;
+  myTeamId: string;
+}
+
+export type CreateManualLeagueBodyRosterSlots = { [key: string]: unknown };
+
+export type CreateManualLeagueBodyScoringBasics = { [key: string]: unknown };
+
+export interface CreateManualLeagueBody {
+  /**
+   * @minLength 1
+   * @maxLength 60
+   */
+  name: string;
+  /**
+   * @minimum 2
+   * @maximum 20
+   */
+  teamCount: number;
+  /**
+   * @minLength 1
+   * @maxLength 60
+   */
+  myTeamName?: string;
+  rosterSlots: CreateManualLeagueBodyRosterSlots;
+  scoringBasics: CreateManualLeagueBodyScoringBasics;
+}
+
+export interface JoinManualLeagueBody {
+  inviteCode: string;
+  /**
+   * @minLength 1
+   * @maxLength 60
+   */
+  teamName?: string;
+}
+
+export interface AddManualPlayerBody {
+  /**
+   * @minLength 1
+   * @maxLength 60
+   */
+  name: string;
+  /**
+   * @minLength 1
+   * @maxLength 10
+   */
+  position: string;
+  isStarter?: boolean;
+  /** @maxLength 5 */
+  realTeam?: string;
+  /**
+   * @minimum 1
+   * @maximum 18
+   */
+  byeWeek?: number;
+}
+
 export type GetLeaguesParams = {
   sessionId: string;
 };

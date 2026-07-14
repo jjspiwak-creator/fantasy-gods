@@ -17,7 +17,9 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AddManualPlayerBody,
   AuthToken,
+  CreateManualLeagueBody,
   ErrorResponse,
   EspnConnectBody,
   EspnConnectResponse,
@@ -26,9 +28,13 @@ import type {
   GetLeaguesParams,
   GetSavedTradesParams,
   HealthStatus,
+  JoinManualLeagueBody,
   League,
   LeagueSettings,
+  ListMyLeagueItem,
   LoginBody,
+  ManualLeagueWithMyTeam,
+  ManualRosterPlayer,
   RefreshSavedTradeParams,
   RegisterBody,
   SaveTradeBody,
@@ -1314,4 +1320,524 @@ export const useUpdateUserSettings = <
   TContext
 > => {
   return useMutation(getUpdateUserSettingsMutationOptions(options));
+};
+
+/**
+ * @summary Create a manual league
+ */
+export const getCreateManualLeagueUrl = () => {
+  return `/api/manual/leagues`;
+};
+
+export const createManualLeague = async (
+  createManualLeagueBody: CreateManualLeagueBody,
+  options?: RequestInit,
+): Promise<ManualLeagueWithMyTeam> => {
+  return customFetch<ManualLeagueWithMyTeam>(getCreateManualLeagueUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createManualLeagueBody),
+  });
+};
+
+export const getCreateManualLeagueMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createManualLeague>>,
+    TError,
+    { data: BodyType<CreateManualLeagueBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createManualLeague>>,
+  TError,
+  { data: BodyType<CreateManualLeagueBody> },
+  TContext
+> => {
+  const mutationKey = ["createManualLeague"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createManualLeague>>,
+    { data: BodyType<CreateManualLeagueBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createManualLeague(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateManualLeagueMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createManualLeague>>
+>;
+export type CreateManualLeagueMutationBody = BodyType<CreateManualLeagueBody>;
+export type CreateManualLeagueMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a manual league
+ */
+export const useCreateManualLeague = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createManualLeague>>,
+    TError,
+    { data: BodyType<CreateManualLeagueBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createManualLeague>>,
+  TError,
+  { data: BodyType<CreateManualLeagueBody> },
+  TContext
+> => {
+  return useMutation(getCreateManualLeagueMutationOptions(options));
+};
+
+/**
+ * @summary List leagues the caller belongs to
+ */
+export const getListMyManualLeaguesUrl = () => {
+  return `/api/manual/leagues`;
+};
+
+export const listMyManualLeagues = async (
+  options?: RequestInit,
+): Promise<ListMyLeagueItem[]> => {
+  return customFetch<ListMyLeagueItem[]>(getListMyManualLeaguesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyManualLeaguesQueryKey = () => {
+  return [`/api/manual/leagues`] as const;
+};
+
+export const getListMyManualLeaguesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyManualLeagues>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyManualLeagues>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyManualLeaguesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyManualLeagues>>
+  > = ({ signal }) => listMyManualLeagues({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyManualLeagues>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyManualLeaguesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyManualLeagues>>
+>;
+export type ListMyManualLeaguesQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List leagues the caller belongs to
+ */
+
+export function useListMyManualLeagues<
+  TData = Awaited<ReturnType<typeof listMyManualLeagues>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyManualLeagues>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyManualLeaguesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Join a league by invite code
+ */
+export const getJoinManualLeagueUrl = () => {
+  return `/api/manual/leagues/join`;
+};
+
+export const joinManualLeague = async (
+  joinManualLeagueBody: JoinManualLeagueBody,
+  options?: RequestInit,
+): Promise<ManualLeagueWithMyTeam> => {
+  return customFetch<ManualLeagueWithMyTeam>(getJoinManualLeagueUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(joinManualLeagueBody),
+  });
+};
+
+export const getJoinManualLeagueMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinManualLeague>>,
+    TError,
+    { data: BodyType<JoinManualLeagueBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof joinManualLeague>>,
+  TError,
+  { data: BodyType<JoinManualLeagueBody> },
+  TContext
+> => {
+  const mutationKey = ["joinManualLeague"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof joinManualLeague>>,
+    { data: BodyType<JoinManualLeagueBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return joinManualLeague(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type JoinManualLeagueMutationResult = NonNullable<
+  Awaited<ReturnType<typeof joinManualLeague>>
+>;
+export type JoinManualLeagueMutationBody = BodyType<JoinManualLeagueBody>;
+export type JoinManualLeagueMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Join a league by invite code
+ */
+export const useJoinManualLeague = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinManualLeague>>,
+    TError,
+    { data: BodyType<JoinManualLeagueBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof joinManualLeague>>,
+  TError,
+  { data: BodyType<JoinManualLeagueBody> },
+  TContext
+> => {
+  return useMutation(getJoinManualLeagueMutationOptions(options));
+};
+
+/**
+ * @summary Get teams in a manual league (member-gated)
+ */
+export const getGetManualLeagueTeamsUrl = (leagueId: string) => {
+  return `/api/manual/leagues/${leagueId}/teams`;
+};
+
+export const getManualLeagueTeams = async (
+  leagueId: string,
+  options?: RequestInit,
+): Promise<Team[]> => {
+  return customFetch<Team[]>(getGetManualLeagueTeamsUrl(leagueId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetManualLeagueTeamsQueryKey = (leagueId: string) => {
+  return [`/api/manual/leagues/${leagueId}/teams`] as const;
+};
+
+export const getGetManualLeagueTeamsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getManualLeagueTeams>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  leagueId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getManualLeagueTeams>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetManualLeagueTeamsQueryKey(leagueId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getManualLeagueTeams>>
+  > = ({ signal }) =>
+    getManualLeagueTeams(leagueId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!leagueId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getManualLeagueTeams>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetManualLeagueTeamsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getManualLeagueTeams>>
+>;
+export type GetManualLeagueTeamsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get teams in a manual league (member-gated)
+ */
+
+export function useGetManualLeagueTeams<
+  TData = Awaited<ReturnType<typeof getManualLeagueTeams>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  leagueId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getManualLeagueTeams>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetManualLeagueTeamsQueryOptions(leagueId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a player to a team (member-gated)
+ */
+export const getAddManualPlayerUrl = (leagueId: string, teamId: string) => {
+  return `/api/manual/leagues/${leagueId}/teams/${teamId}/players`;
+};
+
+export const addManualPlayer = async (
+  leagueId: string,
+  teamId: string,
+  addManualPlayerBody: AddManualPlayerBody,
+  options?: RequestInit,
+): Promise<ManualRosterPlayer> => {
+  return customFetch<ManualRosterPlayer>(
+    getAddManualPlayerUrl(leagueId, teamId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(addManualPlayerBody),
+    },
+  );
+};
+
+export const getAddManualPlayerMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addManualPlayer>>,
+    TError,
+    { leagueId: string; teamId: string; data: BodyType<AddManualPlayerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addManualPlayer>>,
+  TError,
+  { leagueId: string; teamId: string; data: BodyType<AddManualPlayerBody> },
+  TContext
+> => {
+  const mutationKey = ["addManualPlayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addManualPlayer>>,
+    { leagueId: string; teamId: string; data: BodyType<AddManualPlayerBody> }
+  > = (props) => {
+    const { leagueId, teamId, data } = props ?? {};
+
+    return addManualPlayer(leagueId, teamId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddManualPlayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addManualPlayer>>
+>;
+export type AddManualPlayerMutationBody = BodyType<AddManualPlayerBody>;
+export type AddManualPlayerMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Add a player to a team (member-gated)
+ */
+export const useAddManualPlayer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addManualPlayer>>,
+    TError,
+    { leagueId: string; teamId: string; data: BodyType<AddManualPlayerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addManualPlayer>>,
+  TError,
+  { leagueId: string; teamId: string; data: BodyType<AddManualPlayerBody> },
+  TContext
+> => {
+  return useMutation(getAddManualPlayerMutationOptions(options));
+};
+
+/**
+ * @summary Remove a player from a team (member-gated)
+ */
+export const getRemoveManualPlayerUrl = (
+  leagueId: string,
+  teamId: string,
+  playerId: string,
+) => {
+  return `/api/manual/leagues/${leagueId}/teams/${teamId}/players/${playerId}`;
+};
+
+export const removeManualPlayer = async (
+  leagueId: string,
+  teamId: string,
+  playerId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(
+    getRemoveManualPlayerUrl(leagueId, teamId, playerId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getRemoveManualPlayerMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeManualPlayer>>,
+    TError,
+    { leagueId: string; teamId: string; playerId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeManualPlayer>>,
+  TError,
+  { leagueId: string; teamId: string; playerId: string },
+  TContext
+> => {
+  const mutationKey = ["removeManualPlayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeManualPlayer>>,
+    { leagueId: string; teamId: string; playerId: string }
+  > = (props) => {
+    const { leagueId, teamId, playerId } = props ?? {};
+
+    return removeManualPlayer(leagueId, teamId, playerId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveManualPlayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeManualPlayer>>
+>;
+
+export type RemoveManualPlayerMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Remove a player from a team (member-gated)
+ */
+export const useRemoveManualPlayer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeManualPlayer>>,
+    TError,
+    { leagueId: string; teamId: string; playerId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeManualPlayer>>,
+  TError,
+  { leagueId: string; teamId: string; playerId: string },
+  TContext
+> => {
+  return useMutation(getRemoveManualPlayerMutationOptions(options));
 };
