@@ -74,6 +74,20 @@ Note: `artifacts/trade-sim/src/context/LeagueStateContext.tsx` remains the React
 - `GET /api/trades/saved` — List saved trades for a session
 - `POST /api/trades/saved` — Save a trade scenario
 - `DELETE /api/trades/saved/:tradeId` — Delete a saved trade
+- `POST /api/auth/register` — Create an account (returns AuthToken)
+- `POST /api/auth/login` — Log in (returns AuthToken)
+- `GET /api/auth/me` — Current account
+- `PATCH /api/auth/settings` — Update account preferences
+- `POST /api/trades/saved/:tradeId/refresh` — Recompute a saved trade scenario
+- `GET /healthz` — Health check
+- `GET /api/metrics/league-summary` — metrics (pending backlog-10 probe)
+- `POST /api/manual/leagues` — Create a manual league (server generates invite code; creator auto-owns Team 1)
+- `POST /api/manual/leagues/join` — Join by invite code (claims lowest unowned team)
+- `GET /api/manual/leagues` — List my manual leagues (response includes myTeamId and creatorTeamId — commissioner signal)
+- `GET /api/manual/leagues/:leagueId/teams` — Teams + rosters in engine-ready shape (member-gated)
+- `POST /api/manual/leagues/:leagueId/teams/:teamId/players` — Add a typed roster player (any league member)
+- `DELETE /api/manual/leagues/:leagueId/teams/:teamId/players/:playerId` — Remove a roster player (any league member)
+- Auth: all `/api/manual` routes require `Authorization: Bearer <JWT>` issued by `/api/auth/login`; manual-league responses never emit member email addresses (D-7)
 
 ## Database Schema
 
