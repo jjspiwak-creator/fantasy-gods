@@ -10,4 +10,5 @@ import type { ManualLeague } from "./manualLeague";
 export interface ListMyLeagueItem {
   league: ManualLeague;
   myTeamId: string;
+  creatorTeamId?: string | null;
 }

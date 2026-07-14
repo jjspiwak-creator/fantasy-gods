@@ -925,6 +925,7 @@ export const ListMyManualLeaguesResponseItem = zod.object({
     createdAt: zod.string(),
   }),
   myTeamId: zod.string(),
+  creatorTeamId: zod.string().nullish(),
 });
 export const ListMyManualLeaguesResponse = zod.array(
   ListMyManualLeaguesResponseItem,

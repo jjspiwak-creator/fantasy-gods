@@ -77,6 +77,11 @@ Note: `artifacts/trade-sim/src/context/LeagueStateContext.tsx` remains the React
 
 ## Database Schema
 
+- `users` — Registered accounts with email, hashed password, and preferences (showLeagueWarnings, vibePreference)
+- `sessions` — ESPN session tokens mapped to sessionId + username for ESPN API calls
+- `manual_leagues` — User-created league-agnostic war rooms: name, inviteCode, creatorUserId, teamCount, rosterSlots (jsonb), scoringBasics (jsonb)
+- `manual_teams` — Teams within a manual league: leagueId FK, ownerUserId FK (nullable = unowned slot), name
+- `manual_roster_players` — Players on a manual team: teamId FK, name, position (uppercase-normalised), realTeam, byeWeek, isStarter
 - `saved_trades` — Persists trade simulation results with sessionId, leagueId, name, and JSONB result
 
 ## TypeScript & Composite Projects

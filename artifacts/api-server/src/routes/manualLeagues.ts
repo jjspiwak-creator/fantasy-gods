@@ -6,7 +6,6 @@ import {
   manualLeaguesTable,
   manualTeamsTable,
   manualRosterPlayersTable,
-  usersTable,
 } from "@workspace/db";
 import { eq, and, isNull, asc, inArray } from "drizzle-orm";
 import { extractToken, verifyToken } from "../lib/auth";
@@ -261,9 +260,21 @@ router.get("/manual/leagues", async (req, res): Promise<void> => {
       .from(manualLeaguesTable)
       .where(inArray(manualLeaguesTable.id, leagueIds));
 
+    const allTeamsInLeagues = await db
+      .select()
+      .from(manualTeamsTable)
+      .where(inArray(manualTeamsTable.leagueId, leagueIds));
+
     const result = leagues.map((league) => {
       const myTeam = myTeams.find((t) => t.leagueId === league.id)!;
-      return { league: serializeLeague(league), myTeamId: myTeam.id };
+      const creatorTeam = allTeamsInLeagues.find(
+        (t) => t.leagueId === league.id && t.ownerUserId === league.creatorUserId,
+      );
+      return {
+        league: serializeLeague(league),
+        myTeamId: myTeam.id,
+        creatorTeamId: creatorTeam?.id ?? null,
+      };
     });
 
     res.status(200).json(result);
@@ -311,27 +322,12 @@ router.get("/manual/leagues/:leagueId/teams", async (req, res): Promise<void> =>
             .where(inArray(manualRosterPlayersTable.teamId, teamIds))
         : [];
 
-    const ownerIds = allTeams
-      .map((t) => t.ownerUserId)
-      .filter(Boolean) as string[];
-    const owners =
-      ownerIds.length > 0
-        ? await db
-            .select({ id: usersTable.id, email: usersTable.email })
-            .from(usersTable)
-            .where(inArray(usersTable.id, ownerIds))
-        : [];
-
-    const ownerMap = new Map(owners.map((u) => [u.id, u.email]));
-
     const result = allTeams.map((team) => {
       const teamPlayers = allPlayers.filter((p) => p.teamId === team.id);
       return {
         id: team.id,
         name: team.name,
-        ownerName: team.ownerUserId
-          ? (ownerMap.get(team.ownerUserId) ?? "Unowned")
-          : "Unowned",
+        ownerName: team.ownerUserId ? "Claimed" : "Unowned",
         wins: 0,
         losses: 0,
         ties: 0,

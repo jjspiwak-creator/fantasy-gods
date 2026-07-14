@@ -42,3 +42,22 @@ export function useEngineHydration(
     dispatch({ type: "BATCH_SET_TEAMS", teams: engineTeams });
   }, [leagueId, teams, settingsQ.isSuccess, settingsQ.isError, settingsQ.data, dispatch]);
 }
+
+/**
+ * Manual-league variant: hydrates the engine without fetching ESPN settings.
+ * Calls buildEngineState(leagueId, teams) with synthesized defaults only.
+ */
+export function useManualEngineHydration(
+  leagueId: string | undefined,
+  teams: Team[] | undefined,
+): void {
+  const { dispatch } = useLeagueState();
+
+  useEffect(() => {
+    if (!leagueId || !teams || teams.length === 0) return;
+    const { settings, players, teams: engineTeams } = buildEngineState(leagueId, teams);
+    dispatch({ type: "SET_SETTINGS", settings });
+    dispatch({ type: "BATCH_SET_PLAYERS", players });
+    dispatch({ type: "BATCH_SET_TEAMS", teams: engineTeams });
+  }, [leagueId, teams, dispatch]);
+}

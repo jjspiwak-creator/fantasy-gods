@@ -326,6 +326,7 @@ export interface ManualLeagueWithMyTeam {
 export interface ListMyLeagueItem {
   league: ManualLeague;
   myTeamId: string;
+  creatorTeamId?: string | null;
 }
 
 export type CreateManualLeagueBodyRosterSlots = { [key: string]: unknown };

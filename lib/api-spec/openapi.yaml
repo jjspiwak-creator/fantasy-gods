@@ -1332,6 +1332,9 @@ components:
           $ref: "#/components/schemas/ManualLeague"
         myTeamId:
           type: string
+        creatorTeamId:
+          type: string
+          nullable: true
       required:
         - league
         - myTeamId
