@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function Layout({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { sessionId, username, clearSession } = useSession();
-  const { user, clearAuth } = useAuth();
+  const { user, token, clearAuth } = useAuth();
 
   const handleLogout = () => {
     clearSession();
@@ -16,13 +16,36 @@ export function Layout({ children }: { children: ReactNode }) {
     setLocation("/");
   };
 
-  const navItems = [
+  const accountNavItems = [
     { href: "/leagues", icon: Trophy, label: "Leagues" },
-    { href: "/saved-trades", icon: Save, label: "Saved" },
     { href: "/settings", icon: Settings, label: "Settings" },
   ];
 
+  const espnNavItems = [
+    { href: "/saved-trades", icon: Save, label: "Saved" },
+  ];
+
   const isConnected = !!sessionId;
+  const isLoggedIn = !!token || !!sessionId;
+
+  const renderNavLink = (item: { href: string; icon: React.ElementType; label: string }) => {
+    const isActive = location.startsWith(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
+          isActive
+            ? "bg-primary/10 text-primary border border-primary/20"
+            : "text-muted-foreground hover:text-white hover:bg-white/5"
+        )}
+      >
+        <item.icon className="w-3.5 h-3.5" />
+        {item.label}
+      </Link>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background w-full">
@@ -31,7 +54,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-card/80 backdrop-blur-md">
         <div className="flex items-center justify-between px-4 h-14">
           {/* Logo */}
-          <Link href={isConnected ? "/leagues" : "/"}>
+          <Link href={isLoggedIn ? "/leagues" : "/"}>
             <div className="flex items-center gap-2.5 cursor-pointer">
               <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center">
                 <GitCompareArrows className="w-4 h-4 text-primary" />
@@ -56,26 +79,10 @@ export function Layout({ children }: { children: ReactNode }) {
                   </>
                 )}
               </div>
-              {/* Desktop nav */}
+              {/* Desktop nav — account + ESPN items */}
               <nav className="hidden sm:flex items-center gap-1">
-                {navItems.map((item) => {
-                  const isActive = location.startsWith(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                        isActive
-                          ? "bg-primary/10 text-primary border border-primary/20"
-                          : "text-muted-foreground hover:text-white hover:bg-white/5"
-                      )}
-                    >
-                      <item.icon className="w-3.5 h-3.5" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                {accountNavItems.map(renderNavLink)}
+                {espnNavItems.map(renderNavLink)}
               </nav>
               <button
                 onClick={handleLogout}
@@ -85,6 +92,20 @@ export function Layout({ children }: { children: ReactNode }) {
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Disconnect</span>
               </button>
+            </div>
+          ) : isLoggedIn ? (
+            <div className="flex items-center gap-3">
+              {user && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
+                  <WifiOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  <User className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user.email}</span>
+                </div>
+              )}
+              {/* Desktop nav — account items only (no ESPN-required links) */}
+              <nav className="hidden sm:flex items-center gap-1">
+                {accountNavItems.map(renderNavLink)}
+              </nav>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/5">
@@ -102,11 +123,11 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      {/* Mobile bottom nav — only when connected */}
-      {isConnected && (
+      {/* Mobile bottom nav — visible when logged in (account items always; ESPN items only when connected) */}
+      {isLoggedIn && (
         <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-card/90 backdrop-blur-md">
           <div className="flex">
-            {navItems.map((item) => {
+            {accountNavItems.map((item) => {
               const isActive = location.startsWith(item.href);
               return (
                 <Link
@@ -122,13 +143,31 @@ export function Layout({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
-            <button
-              onClick={handleLogout}
-              className="flex-1 flex flex-col items-center gap-1 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              Out
-            </button>
+            {isConnected && espnNavItems.map((item) => {
+              const isActive = location.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  <item.icon className={cn("w-5 h-5", isActive && "drop-shadow-[0_0_6px_hsl(var(--primary))]")} />
+                  {item.label}
+                </Link>
+              );
+            })}
+            {isConnected && (
+              <button
+                onClick={handleLogout}
+                className="flex-1 flex flex-col items-center gap-1 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                Out
+              </button>
+            )}
           </div>
         </nav>
       )}

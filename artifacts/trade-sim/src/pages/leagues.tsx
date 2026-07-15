@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useUserLeagues } from "@/hooks/use-espn-api";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Users, Calendar, ArrowRight, Plus, LogIn } from "lucide-react";
+import { Trophy, Users, Calendar, ArrowRight, Plus, LogIn, Wifi } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSession } from "@/hooks/use-session";
 import { useAuth } from "@/hooks/use-auth";
@@ -123,19 +123,28 @@ export function LeaguesPage() {
         )}
       </section>
 
-      {/* ── ESPN LEAGUES SECTION (only when sessionId exists) ── */}
-      {sessionId && (
-        <section className="space-y-6">
-          <header>
-            <h2 className="text-3xl font-display font-bold">
-              ESPN <span className="text-primary">LEAGUES</span>
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Select a league to view rosters and build trades.
-            </p>
-          </header>
+      {/* ── ESPN LEAGUES SECTION ── */}
+      <section className="space-y-6">
+        <header>
+          <h2 className="text-3xl font-display font-bold">
+            ESPN <span className="text-primary">LEAGUES</span>
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Select a league to view rosters and build trades.
+          </p>
+        </header>
 
-          {espnLoading ? (
+        {!sessionId ? (
+          <div className="flex items-center justify-center p-10">
+            <button
+              onClick={() => setLocation("/connect")}
+              className="px-6 py-3 rounded-xl font-bold text-sm border border-white/20 text-white hover:bg-white/5 transition-colors flex items-center gap-2"
+            >
+              <Wifi className="w-4 h-4 text-primary" />
+              Connect ESPN account
+            </button>
+          </div>
+        ) : espnLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="animate-pulse">
@@ -205,7 +214,6 @@ export function LeaguesPage() {
             </div>
           )}
         </section>
-      )}
 
       {showCreate && (
         <CreateLeagueModal

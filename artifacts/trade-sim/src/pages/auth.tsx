@@ -24,9 +24,9 @@ export function AuthPage() {
     if (sessionId) setLocation("/leagues");
   }, [sessionId]);
 
-  // If already have a JWT but no ESPN session → go to connect
+  // If already have a JWT → go to leagues
   useEffect(() => {
-    if (token && !sessionId) setLocation("/connect");
+    if (token && !sessionId) setLocation("/leagues");
   }, [token, sessionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,12 +34,12 @@ export function AuthPage() {
     if (mode === "register") {
       registerMutation.mutate(
         { email, password },
-        { onSuccess: () => setLocation("/connect") }
+        { onSuccess: () => setLocation("/leagues") }
       );
     } else {
       loginMutation.mutate(
         { email, password },
-        { onSuccess: () => setLocation("/connect") }
+        { onSuccess: () => setLocation("/leagues") }
       );
     }
   };
