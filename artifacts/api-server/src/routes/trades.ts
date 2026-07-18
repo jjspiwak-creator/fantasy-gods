@@ -27,6 +27,7 @@ function parseSessionHeader(raw: unknown): string | null {
 function formatTrade(t: typeof savedTradesTable.$inferSelect) {
   return {
     ...t,
+    transfers: t.participants,
     createdAt: t.createdAt.toISOString(),
     lastRefreshedAt: t.lastRefreshedAt.toISOString(),
   };
