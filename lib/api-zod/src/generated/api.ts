@@ -355,12 +355,12 @@ export const SimulateTradeResponse = zod.object({
  * @summary Get saved trade simulations
  */
 export const GetSavedTradesHeader = zod.object({
-  "X-Session-Id": zod.string(),
+  "X-Session-Id": zod.string().optional(),
 });
 
 export const GetSavedTradesResponseItem = zod.object({
   id: zod.number(),
-  sessionId: zod.string(),
+  sessionId: zod.string().nullable(),
   leagueId: zod.string(),
   name: zod.string(),
   result: zod.object({
@@ -493,7 +493,7 @@ export const GetSavedTradesResponse = zod.array(GetSavedTradesResponseItem);
  * @summary Save a trade simulation
  */
 export const SaveTradeBody = zod.object({
-  sessionId: zod.string(),
+  sessionId: zod.string().optional(),
   leagueId: zod.string(),
   name: zod.string(),
   result: zod.object({
@@ -629,7 +629,7 @@ export const RefreshSavedTradeHeader = zod.object({
 
 export const RefreshSavedTradeResponse = zod.object({
   id: zod.number(),
-  sessionId: zod.string(),
+  sessionId: zod.string().nullable(),
   leagueId: zod.string(),
   name: zod.string(),
   result: zod.object({

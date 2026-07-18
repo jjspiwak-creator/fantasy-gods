@@ -9,7 +9,7 @@ import {
   RefreshSavedTradeParams,
 } from "@workspace/api-zod";
 import { db, savedTradesTable } from "@workspace/db";
-import { eq, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { simulateTrade, TradeRejectedError, type PlayerTransfer } from "../lib/tradeSimulator";
 import { fetchLeagueTeams } from "../lib/espn";
 import { getSession } from "../lib/sessions";
@@ -80,25 +80,27 @@ router.post("/trades/simulate", async (req, res): Promise<void> => {
 
 router.get("/trades/saved", async (req, res): Promise<void> => {
   const sessionId = parseSessionHeader(req.headers["x-session-id"]);
-  if (!sessionId) {
-    res.status(400).json({ error: "X-Session-Id header is required" });
+  const jwtPayload = verifyToken(extractToken(req.headers.authorization) ?? "");
+
+  if (!sessionId && !jwtPayload) {
+    res.status(401).json({ error: "Authentication required" });
     return;
   }
 
-  // If a valid JWT is provided, also return trades saved under the user account.
-  const jwtPayload = verifyToken(extractToken(req.headers.authorization) ?? "");
+  const whereClause =
+    sessionId && jwtPayload
+      ? or(
+          eq(savedTradesTable.sessionId, sessionId),
+          eq(savedTradesTable.userId, jwtPayload.userId)
+        )
+      : sessionId
+      ? eq(savedTradesTable.sessionId, sessionId)
+      : eq(savedTradesTable.userId, jwtPayload!.userId);
 
   const trades = await db
     .select()
     .from(savedTradesTable)
-    .where(
-      jwtPayload
-        ? or(
-            eq(savedTradesTable.sessionId, sessionId),
-            eq(savedTradesTable.userId, jwtPayload.userId)
-          )
-        : eq(savedTradesTable.sessionId, sessionId)
-    )
+    .where(whereClause)
     .orderBy(savedTradesTable.createdAt);
 
   res.json(GetSavedTradesResponse.parse(trades.map(formatTrade)));
@@ -111,12 +113,19 @@ router.post("/trades/saved", async (req, res): Promise<void> => {
     return;
   }
 
+  const sessionId = parsed.data.sessionId?.trim() || null;
   const jwtPayload = verifyToken(extractToken(req.headers.authorization) ?? "");
+
+  if (!jwtPayload && !sessionId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
   const now = new Date();
   const [saved] = await db
     .insert(savedTradesTable)
     .values({
-      sessionId: parsed.data.sessionId,
+      sessionId,
       userId: jwtPayload?.userId ?? null,
       leagueId: parsed.data.leagueId,
       name: parsed.data.name,
@@ -188,9 +197,27 @@ router.delete("/trades/saved/:tradeId", async (req, res): Promise<void> => {
     return;
   }
 
+  const sessionId = parseSessionHeader(req.headers["x-session-id"]);
+  const jwtPayload = verifyToken(extractToken(req.headers.authorization) ?? "");
+
+  if (!sessionId && !jwtPayload) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const identityClause =
+    sessionId && jwtPayload
+      ? or(
+          eq(savedTradesTable.sessionId, sessionId),
+          eq(savedTradesTable.userId, jwtPayload.userId)
+        )
+      : sessionId
+      ? eq(savedTradesTable.sessionId, sessionId)
+      : eq(savedTradesTable.userId, jwtPayload!.userId);
+
   const [deleted] = await db
     .delete(savedTradesTable)
-    .where(eq(savedTradesTable.id, params.data.tradeId))
+    .where(and(eq(savedTradesTable.id, params.data.tradeId), identityClause))
     .returning();
 
   if (!deleted) {

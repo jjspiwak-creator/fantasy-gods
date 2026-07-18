@@ -10,7 +10,8 @@ import type { TradeSimulationResult } from "./tradeSimulationResult";
 
 export interface SavedTrade {
   id: number;
-  sessionId: string;
+  /** @nullable */
+  sessionId: string | null;
   leagueId: string;
   name: string;
   result: TradeSimulationResult;

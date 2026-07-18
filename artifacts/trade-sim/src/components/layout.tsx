@@ -82,7 +82,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {/* Desktop nav — account + ESPN items */}
               <nav className="hidden sm:flex items-center gap-1">
                 {accountNavItems.map(renderNavLink)}
-                {espnNavItems.map(renderNavLink)}
+                {isLoggedIn && espnNavItems.map(renderNavLink)}
               </nav>
               <button
                 onClick={handleLogout}
@@ -102,9 +102,10 @@ export function Layout({ children }: { children: ReactNode }) {
                   <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user.email}</span>
                 </div>
               )}
-              {/* Desktop nav — account items only (no ESPN-required links) */}
+              {/* Desktop nav — account + saved items */}
               <nav className="hidden sm:flex items-center gap-1">
                 {accountNavItems.map(renderNavLink)}
+                {espnNavItems.map(renderNavLink)}
               </nav>
             </div>
           ) : (
@@ -143,7 +144,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
-            {isConnected && espnNavItems.map((item) => {
+            {isLoggedIn && espnNavItems.map((item) => {
               const isActive = location.startsWith(item.href);
               return (
                 <Link

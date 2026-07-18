@@ -47,7 +47,7 @@ interface TradeBuilderCoreProps {
   teams: Team[] | undefined;
   isLoading: boolean;
   leagueId: string | undefined;
-  sessionId: string;
+  sessionId?: string;
   showSave: boolean;
 }
 
@@ -122,7 +122,7 @@ function TradeBuilderCore({
     setLastTransfers(transfers);
     setDropsPerTeam({});
     simulateMutation.mutate(
-      { sessionId, leagueId, transfers, teams },
+      { sessionId: sessionId ?? "", leagueId, transfers, teams },
       { onSuccess: (res) => { setSimulationResult(res); setStep(3); } },
     );
   };
@@ -132,7 +132,7 @@ function TradeBuilderCore({
     const names = simulationResult.teamResults.map((t) => t.teamName).join(" & ");
     saveMutation.mutate(
       {
-        sessionId,
+        ...(sessionId ? { sessionId } : {}),
         leagueId,
         name: `Trade: ${names}`,
         result: simulationResult,
@@ -499,8 +499,7 @@ export function ManualTradeBuilderPage() {
       teams={teams}
       isLoading={isLoading}
       leagueId={leagueId}
-      sessionId=""
-      showSave={false}
+      showSave={true}
     />
   );
 }

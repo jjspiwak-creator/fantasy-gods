@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { GitCompareArrows, Mail, Lock, Eye, EyeOff, UserCircle2, Users } from "lucide-react";
+import { GitCompareArrows, Mail, Lock, Eye, EyeOff, UserCircle2 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { useAuth, useRegisterMutation, useLoginMutation } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -85,20 +85,6 @@ export function AuthPage() {
               Sign In
             </button>
 
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
-              <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground uppercase tracking-widest">or</span></div>
-            </div>
-
-            <button
-              onClick={() => setLocation("/connect")}
-              className="w-full flex items-center gap-3 px-5 py-4 rounded-xl border border-white/10 text-muted-foreground font-medium hover:text-white hover:border-white/20 transition-all text-sm"
-            >
-              <Users className="w-4 h-4" />
-              Continue as Guest
-              <span className="ml-auto text-xs">No account required</span>
-            </button>
-
             <p className="text-center text-xs text-muted-foreground mt-2 leading-relaxed">
               Accounts let you access saved trades across devices and store preferences.
             </p>
@@ -168,19 +154,6 @@ export function AuthPage() {
               className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold uppercase tracking-wider disabled:opacity-50 hover:bg-primary/90 box-glow transition-all"
             >
               {isPending ? "Please wait..." : mode === "register" ? "Create Account" : "Sign In"}
-            </button>
-
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
-              <div className="relative flex justify-center"><span className="bg-background px-3 text-xs text-muted-foreground uppercase tracking-widest">or</span></div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setLocation("/connect")}
-              className="w-full py-3 rounded-xl border border-white/10 text-muted-foreground text-sm font-medium hover:text-white hover:border-white/20 transition-all"
-            >
-              Continue as Guest instead
             </button>
 
             <p className="text-center text-xs text-muted-foreground">

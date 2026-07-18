@@ -71,9 +71,9 @@ Note: `artifacts/trade-sim/src/context/LeagueStateContext.tsx` remains the React
 - `GET /api/espn/leagues/:leagueId/teams` — Get teams + rosters in a league
 - `GET /api/espn/leagues/:leagueId/settings` — league rulebook (scoring, roster, waivers, draft)
 - `POST /api/trades/simulate` — Simulate a multi-team trade; accepts optional `settings` (LeagueSettings) to enforce real roster caps and slot eligibility; engine gate rejects illegal trades with HTTP 400
-- `GET /api/trades/saved` — List saved trades for a session
-- `POST /api/trades/saved` — Save a trade scenario
-- `DELETE /api/trades/saved/:tradeId` — Delete a saved trade
+- `GET /api/trades/saved` — List saved trades (identity = ESPN session or JWT; either required)
+- `POST /api/trades/saved` — Save a trade scenario (identity = ESPN session or JWT; either required)
+- `DELETE /api/trades/saved/:tradeId` — Delete a saved trade (requires matching ESPN session or JWT identity)
 - `POST /api/auth/register` — Create an account (returns AuthToken)
 - `POST /api/auth/login` — Log in (returns AuthToken)
 - `GET /api/auth/me` — Current account
@@ -96,7 +96,7 @@ Note: `artifacts/trade-sim/src/context/LeagueStateContext.tsx` remains the React
 - `manual_leagues` — User-created league-agnostic war rooms: name, inviteCode, creatorUserId, teamCount, rosterSlots (jsonb), scoringBasics (jsonb)
 - `manual_teams` — Teams within a manual league: leagueId FK, ownerUserId FK (nullable = unowned slot), name
 - `manual_roster_players` — Players on a manual team: teamId FK, name, position (uppercase-normalised), realTeam, byeWeek, isStarter
-- `saved_trades` — Persists trade simulation results with sessionId, leagueId, name, and JSONB result
+- `saved_trades` — Persists trade simulation results with sessionId (nullable), leagueId, name, and JSONB result; identity = ESPN session or account JWT
 
 ## TypeScript & Composite Projects
 

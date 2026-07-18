@@ -1,5 +1,6 @@
 import { useSavedTradesList, useDeleteTradeMutation, useRefreshTradeMutation } from "@/hooks/use-espn-api";
 import { useSession } from "@/hooks/use-session";
+import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatTradeValue, cn, getGradeColor, getGradeBg } from "@/lib/utils";
@@ -28,8 +29,9 @@ export function SavedTradesPage() {
   const { data: trades, isLoading } = useSavedTradesList();
   const deleteMutation = useDeleteTradeMutation();
   const refreshMutation = useRefreshTradeMutation();
+  const token = useAuth(s => s.token);
 
-  if (!sessionId) {
+  if (!sessionId && !token) {
     setLocation("/");
     return null;
   }

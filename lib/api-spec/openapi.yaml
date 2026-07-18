@@ -216,7 +216,7 @@ paths:
       parameters:
         - name: X-Session-Id
           in: header
-          required: true
+          required: false
           schema:
             type: string
       responses:
@@ -1198,7 +1198,6 @@ components:
           items:
             $ref: "#/components/schemas/PlayerTransfer"
       required:
-        - sessionId
         - leagueId
         - name
         - result
@@ -1210,7 +1209,7 @@ components:
         id:
           type: integer
         sessionId:
-          type: string
+          type: ["string", "null"]
         leagueId:
           type: string
         name:

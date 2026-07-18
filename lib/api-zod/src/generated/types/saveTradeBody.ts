@@ -9,7 +9,7 @@ import type { PlayerTransfer } from "./playerTransfer";
 import type { TradeSimulationResult } from "./tradeSimulationResult";
 
 export interface SaveTradeBody {
-  sessionId: string;
+  sessionId?: string;
   leagueId: string;
   name: string;
   result: TradeSimulationResult;

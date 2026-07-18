@@ -5,7 +5,7 @@ import { usersTable } from "./users";
 
 export const savedTradesTable = pgTable("saved_trades", {
   id: serial("id").primaryKey(),
-  sessionId: text("session_id").notNull(),
+  sessionId: text("session_id"),
   userId: uuid("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   leagueId: text("league_id").notNull(),
   name: text("name").notNull(),

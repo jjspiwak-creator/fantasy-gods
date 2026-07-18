@@ -260,7 +260,7 @@ export interface UpdateSettingsBody {
 }
 
 export interface SaveTradeBody {
-  sessionId: string;
+  sessionId?: string;
   leagueId: string;
   name: string;
   result: TradeSimulationResult;
@@ -270,7 +270,8 @@ export interface SaveTradeBody {
 
 export interface SavedTrade {
   id: number;
-  sessionId: string;
+  /** @nullable */
+  sessionId: string | null;
   leagueId: string;
   name: string;
   result: TradeSimulationResult;

@@ -98,8 +98,13 @@ export function useSavedTradesList() {
   const token = useAuth(s => s.token);
   return useQuery({
     queryKey: ['savedTrades', sessionId, token],
-    queryFn: () => getSavedTrades({ headers: { ...sessionHeader(sessionId!), ...authHeaders(token) } }),
-    enabled: !!sessionId,
+    queryFn: () => getSavedTrades({
+      headers: {
+        ...(sessionId ? sessionHeader(sessionId) : {}),
+        ...authHeaders(token),
+      }
+    }),
+    enabled: !!sessionId || !!token,
   });
 }
 
@@ -157,9 +162,15 @@ export function useDeleteTradeMutation() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const sessionId = useSession(s => s.sessionId);
+  const token = useAuth(s => s.token);
 
   return useMutation({
-    mutationFn: (tradeId: number) => deleteSavedTrade(tradeId),
+    mutationFn: (tradeId: number) => deleteSavedTrade(tradeId, {
+      headers: {
+        ...(sessionId ? sessionHeader(sessionId) : {}),
+        ...authHeaders(token),
+      }
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['savedTrades', sessionId] });
       toast({
