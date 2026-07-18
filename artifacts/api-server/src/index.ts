@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { assertCookieCryptoReady } from "./lib/cookieCrypto";
 
 // ── Process-level crash guards ──────────────────────────────────────────────
 // These catch anything that escapes the Express error handler — e.g. errors
@@ -38,6 +39,8 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+assertCookieCryptoReady();
 
 app.listen(port, (err) => {
   if (err) {

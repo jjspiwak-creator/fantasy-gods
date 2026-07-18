@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { sessionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import { encryptCookie, decryptCookie } from "./cookieCrypto";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -13,10 +14,13 @@ export async function createSession(creds: EspnCredentials, username?: string): 
   const sessionId = randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
+  const strippedS2 = stripWhitespace(creds.espnS2);
+  const strippedSwid = stripWhitespace(creds.swid);
+
   await db.insert(sessionsTable).values({
     id: sessionId,
-    espnS2: stripWhitespace(creds.espnS2),
-    swid: stripWhitespace(creds.swid),
+    espnS2: encryptCookie(strippedS2),
+    swid: encryptCookie(strippedSwid),
     username: username || null,
     expiresAt,
   });
@@ -37,7 +41,15 @@ export async function getSession(sessionId: string): Promise<EspnCredentials | n
       return null;
     }
 
-    return { espnS2: session.espnS2, swid: session.swid };
+    const espnS2 = decryptCookie(session.espnS2);
+    const swid = decryptCookie(session.swid);
+
+    if (espnS2 === null || swid === null) {
+      await db.delete(sessionsTable).where(eq(sessionsTable.id, sessionId));
+      return null;
+    }
+
+    return { espnS2, swid };
   } catch (err) {
     logger.error({ err }, "Failed to get session from DB");
     return null;
