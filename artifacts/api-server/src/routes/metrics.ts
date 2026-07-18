@@ -3,8 +3,10 @@
  *
  * Returns VORP-based power rankings and positional grades for a league.
  *
+ * Headers:
+ *   X-Session-Id  string (required) — ESPN session cookie ID
+ *
  * Query params:
- *   sessionId  string (required) — ESPN session cookie ID
  *   leagueId   string (required) — ESPN fantasy league ID
  *   season     number (optional) — defaults to current calendar year
  *
@@ -24,12 +26,19 @@ import { logger } from "../lib/logger";
 const router = Router();
 
 const QuerySchema = z.object({
-  sessionId: z.string().min(1, "sessionId is required"),
   leagueId:  z.string().min(1, "leagueId is required"),
   season:    z.string().regex(/^\d{4}$/).optional(),
 });
 
 router.get("/metrics/league-summary", async (req, res): Promise<void> => {
+  const rawSessionId = req.headers["x-session-id"];
+  const sessionParsed = z.string().min(1).safeParse(rawSessionId);
+  if (!sessionParsed.success) {
+    res.status(400).json({ error: "X-Session-Id header is required" });
+    return;
+  }
+  const sessionId = sessionParsed.data;
+
   const parsed = QuerySchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({
@@ -38,7 +47,7 @@ router.get("/metrics/league-summary", async (req, res): Promise<void> => {
     return;
   }
 
-  const { sessionId, leagueId, season: seasonStr } = parsed.data;
+  const { leagueId, season: seasonStr } = parsed.data;
   const season = seasonStr ? parseInt(seasonStr, 10) : new Date().getFullYear();
 
   const creds = await getSession(sessionId);

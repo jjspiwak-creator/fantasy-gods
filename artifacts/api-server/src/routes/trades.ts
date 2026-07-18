@@ -1,13 +1,12 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import {
   SimulateTradeBody,
   SimulateTradeResponse,
-  GetSavedTradesQueryParams,
   GetSavedTradesResponse,
   SaveTradeBody,
   DeleteSavedTradeParams,
   RefreshSavedTradeParams,
-  RefreshSavedTradeQueryParams,
 } from "@workspace/api-zod";
 import { db, savedTradesTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
@@ -17,6 +16,13 @@ import { getSession } from "../lib/sessions";
 import { extractToken, verifyToken } from "../lib/auth";
 
 const router: IRouter = Router();
+
+const SessionIdHeader = z.string().min(1);
+
+function parseSessionHeader(raw: unknown): string | null {
+  const parsed = SessionIdHeader.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
 
 function formatTrade(t: typeof savedTradesTable.$inferSelect) {
   return {
@@ -73,9 +79,9 @@ router.post("/trades/simulate", async (req, res): Promise<void> => {
 });
 
 router.get("/trades/saved", async (req, res): Promise<void> => {
-  const params = GetSavedTradesQueryParams.safeParse(req.query);
-  if (!params.success) {
-    res.status(400).json({ error: "sessionId is required" });
+  const sessionId = parseSessionHeader(req.headers["x-session-id"]);
+  if (!sessionId) {
+    res.status(400).json({ error: "X-Session-Id header is required" });
     return;
   }
 
@@ -88,10 +94,10 @@ router.get("/trades/saved", async (req, res): Promise<void> => {
     .where(
       jwtPayload
         ? or(
-            eq(savedTradesTable.sessionId, params.data.sessionId),
+            eq(savedTradesTable.sessionId, sessionId),
             eq(savedTradesTable.userId, jwtPayload.userId)
           )
-        : eq(savedTradesTable.sessionId, params.data.sessionId)
+        : eq(savedTradesTable.sessionId, sessionId)
     )
     .orderBy(savedTradesTable.createdAt);
 
@@ -131,13 +137,13 @@ router.post("/trades/saved/:tradeId/refresh", async (req, res): Promise<void> =>
     return;
   }
 
-  const queryParams = RefreshSavedTradeQueryParams.safeParse(req.query);
-  if (!queryParams.success) {
-    res.status(400).json({ error: "sessionId is required" });
+  const sessionId = parseSessionHeader(req.headers["x-session-id"]);
+  if (!sessionId) {
+    res.status(400).json({ error: "X-Session-Id header is required" });
     return;
   }
 
-  const creds = await getSession(queryParams.data.sessionId);
+  const creds = await getSession(sessionId);
   if (!creds) {
     res.status(401).json({ error: "Session not found or expired. Please reconnect your ESPN account." });
     return;

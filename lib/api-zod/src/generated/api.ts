@@ -34,8 +34,8 @@ export const ConnectEspnResponse = zod.object({
  * Returns all fantasy football leagues for the connected account
  * @summary Get user leagues
  */
-export const GetLeaguesQueryParams = zod.object({
-  sessionId: zod.coerce.string(),
+export const GetLeaguesHeader = zod.object({
+  "X-Session-Id": zod.string(),
 });
 
 export const GetLeaguesResponseItem = zod.object({
@@ -57,8 +57,11 @@ export const GetLeagueTeamsParams = zod.object({
 });
 
 export const GetLeagueTeamsQueryParams = zod.object({
-  sessionId: zod.coerce.string(),
   season: zod.coerce.string().optional(),
+});
+
+export const GetLeagueTeamsHeader = zod.object({
+  "X-Session-Id": zod.string(),
 });
 
 export const GetLeagueTeamsResponseItem = zod.object({
@@ -97,8 +100,11 @@ export const GetLeagueSettingsParams = zod.object({
 });
 
 export const GetLeagueSettingsQueryParams = zod.object({
-  sessionId: zod.coerce.string(),
   season: zod.coerce.string().optional(),
+});
+
+export const GetLeagueSettingsHeader = zod.object({
+  "X-Session-Id": zod.string(),
 });
 
 export const GetLeagueSettingsResponse = zod.object({
@@ -348,8 +354,8 @@ export const SimulateTradeResponse = zod.object({
  * Returns all saved trade scenarios for the given session
  * @summary Get saved trade simulations
  */
-export const GetSavedTradesQueryParams = zod.object({
-  sessionId: zod.coerce.string(),
+export const GetSavedTradesHeader = zod.object({
+  "X-Session-Id": zod.string(),
 });
 
 export const GetSavedTradesResponseItem = zod.object({
@@ -617,8 +623,8 @@ export const RefreshSavedTradeParams = zod.object({
   tradeId: zod.coerce.number(),
 });
 
-export const RefreshSavedTradeQueryParams = zod.object({
-  sessionId: zod.coerce.string(),
+export const RefreshSavedTradeHeader = zod.object({
+  "X-Session-Id": zod.string(),
 });
 
 export const RefreshSavedTradeResponse = zod.object({

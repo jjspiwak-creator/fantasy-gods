@@ -13,8 +13,6 @@ export * from "./generated/types/authToken";
 export * from "./generated/types/errorResponse";
 export * from "./generated/types/espnConnectBody";
 export * from "./generated/types/espnConnectResponse";
-export * from "./generated/types/getLeaguesParams";
-export * from "./generated/types/getSavedTradesParams";
 export * from "./generated/types/healthStatus";
 export * from "./generated/types/league";
 export * from "./generated/types/leagueSettings";

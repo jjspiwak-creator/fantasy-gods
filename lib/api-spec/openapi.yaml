@@ -71,8 +71,8 @@ paths:
       summary: Get user leagues
       description: Returns all fantasy football leagues for the connected account
       parameters:
-        - name: sessionId
-          in: query
+        - name: X-Session-Id
+          in: header
           required: true
           schema:
             type: string
@@ -104,8 +104,8 @@ paths:
           required: true
           schema:
             type: string
-        - name: sessionId
-          in: query
+        - name: X-Session-Id
+          in: header
           required: true
           schema:
             type: string
@@ -142,8 +142,8 @@ paths:
           required: true
           schema:
             type: string
-        - name: sessionId
-          in: query
+        - name: X-Session-Id
+          in: header
           required: true
           schema:
             type: string
@@ -214,8 +214,8 @@ paths:
       summary: Get saved trade simulations
       description: Returns all saved trade scenarios for the given session
       parameters:
-        - name: sessionId
-          in: query
+        - name: X-Session-Id
+          in: header
           required: true
           schema:
             type: string
@@ -264,8 +264,8 @@ paths:
           required: true
           schema:
             type: integer
-        - name: sessionId
-          in: query
+        - name: X-Session-Id
+          in: header
           required: true
           schema:
             type: string

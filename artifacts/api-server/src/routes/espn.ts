@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import {
   ConnectEspnBody,
   ConnectEspnResponse,
-  GetLeaguesQueryParams,
   GetLeaguesResponse,
   GetLeagueTeamsParams,
   GetLeagueTeamsQueryParams,
@@ -15,6 +15,13 @@ import { fetchUserLeagues, fetchLeagueTeams, fetchLeagueSettings, verifyCredenti
 import { createSession, getSession } from "../lib/sessions";
 
 const router: IRouter = Router();
+
+const SessionIdHeader = z.string().min(1);
+
+function parseSessionHeader(raw: unknown): string | null {
+  const parsed = SessionIdHeader.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
 
 router.post("/espn/connect", async (req, res): Promise<void> => {
   const parsed = ConnectEspnBody.safeParse(req.body);
@@ -46,13 +53,13 @@ router.post("/espn/connect", async (req, res): Promise<void> => {
 });
 
 router.get("/espn/leagues", async (req, res): Promise<void> => {
-  const params = GetLeaguesQueryParams.safeParse(req.query);
-  if (!params.success) {
-    res.status(400).json({ error: "sessionId is required" });
+  const sessionId = parseSessionHeader(req.headers["x-session-id"]);
+  if (!sessionId) {
+    res.status(400).json({ error: "X-Session-Id header is required" });
     return;
   }
 
-  const creds = await getSession(params.data.sessionId);
+  const creds = await getSession(sessionId);
   if (!creds) {
     res.status(401).json({ error: "Session not found or expired. Please reconnect your ESPN account." });
     return;
@@ -83,20 +90,23 @@ router.get("/espn/leagues/:leagueId/teams", async (req, res): Promise<void> => {
     return;
   }
 
-  const queryParams = GetLeagueTeamsQueryParams.safeParse(req.query);
-  if (!queryParams.success) {
-    res.status(400).json({ error: "sessionId is required" });
+  const sessionId = parseSessionHeader(req.headers["x-session-id"]);
+  if (!sessionId) {
+    res.status(400).json({ error: "X-Session-Id header is required" });
     return;
   }
 
-  const creds = await getSession(queryParams.data.sessionId);
+  const creds = await getSession(sessionId);
   if (!creds) {
     res.status(401).json({ error: "Session not found or expired. Please reconnect your ESPN account." });
     return;
   }
 
+  const queryParams = GetLeagueTeamsQueryParams.safeParse(req.query);
   try {
-    const season = queryParams.data.season ? parseInt(queryParams.data.season, 10) : new Date().getFullYear();
+    const season = queryParams.success && queryParams.data.season
+      ? parseInt(queryParams.data.season, 10)
+      : new Date().getFullYear();
     const teams = await fetchLeagueTeams(creds, pathParams.data.leagueId, season);
     res.json(GetLeagueTeamsResponse.parse(teams));
   } catch (err) {
@@ -112,20 +122,23 @@ router.get("/espn/leagues/:leagueId/settings", async (req, res): Promise<void> =
     return;
   }
 
-  const queryParams = GetLeagueSettingsQueryParams.safeParse(req.query);
-  if (!queryParams.success) {
-    res.status(400).json({ error: "sessionId is required" });
+  const sessionId = parseSessionHeader(req.headers["x-session-id"]);
+  if (!sessionId) {
+    res.status(400).json({ error: "X-Session-Id header is required" });
     return;
   }
 
-  const creds = await getSession(queryParams.data.sessionId);
+  const creds = await getSession(sessionId);
   if (!creds) {
     res.status(401).json({ error: "Session not found or expired. Please reconnect your ESPN account." });
     return;
   }
 
+  const queryParams = GetLeagueSettingsQueryParams.safeParse(req.query);
   try {
-    const season = queryParams.data.season ? parseInt(queryParams.data.season, 10) : new Date().getFullYear();
+    const season = queryParams.success && queryParams.data.season
+      ? parseInt(queryParams.data.season, 10)
+      : new Date().getFullYear();
     const settings = await fetchLeagueSettings(creds, pathParams.data.leagueId, season);
     res.json(GetLeagueSettingsResponse.parse(settings));
   } catch (err) {

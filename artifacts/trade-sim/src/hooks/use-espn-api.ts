@@ -17,8 +17,12 @@ import { useSession } from "./use-session";
 import { useToast } from "./use-toast";
 import { useAuth } from "./use-auth";
 
-function authHeaders(token: string | null) {
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+function sessionHeader(sessionId: string) {
+  return { "X-Session-Id": sessionId };
+}
+
+function authHeaders(token: string | null): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // Wrappers around the generated hooks to handle session injection and standard error handling
@@ -52,7 +56,7 @@ export function useUserLeagues() {
   const sessionId = useSession(s => s.sessionId);
   return useQuery({
     queryKey: ['leagues', sessionId],
-    queryFn: () => getLeagues({ sessionId: sessionId! }),
+    queryFn: () => getLeagues({ headers: sessionHeader(sessionId!) }),
     enabled: !!sessionId,
   });
 }
@@ -61,7 +65,7 @@ export function useLeagueTeams(leagueId: string) {
   const sessionId = useSession(s => s.sessionId);
   return useQuery({
     queryKey: ['leagueTeams', leagueId, sessionId],
-    queryFn: () => getLeagueTeams(leagueId, { sessionId: sessionId! }),
+    queryFn: () => getLeagueTeams(leagueId, undefined, { headers: sessionHeader(sessionId!) }),
     enabled: !!sessionId && !!leagueId,
   });
 }
@@ -70,7 +74,7 @@ export function useLeagueSettings(leagueId: string) {
   const sessionId = useSession(s => s.sessionId);
   return useQuery({
     queryKey: ['leagueSettings', leagueId, sessionId],
-    queryFn: () => getLeagueSettings(leagueId, { sessionId: sessionId! }),
+    queryFn: () => getLeagueSettings(leagueId, undefined, { headers: sessionHeader(sessionId!) }),
     enabled: !!sessionId && !!leagueId,
   });
 }
@@ -94,7 +98,7 @@ export function useSavedTradesList() {
   const token = useAuth(s => s.token);
   return useQuery({
     queryKey: ['savedTrades', sessionId, token],
-    queryFn: () => getSavedTrades({ sessionId: sessionId! }, { headers: authHeaders(token) }),
+    queryFn: () => getSavedTrades({ headers: { ...sessionHeader(sessionId!), ...authHeaders(token) } }),
     enabled: !!sessionId,
   });
 }
@@ -131,7 +135,7 @@ export function useRefreshTradeMutation() {
 
   return useMutation({
     mutationFn: (tradeId: number) =>
-      refreshSavedTrade(tradeId, { sessionId: sessionId! }),
+      refreshSavedTrade(tradeId, { headers: sessionHeader(sessionId!) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['savedTrades', sessionId] });
       toast({

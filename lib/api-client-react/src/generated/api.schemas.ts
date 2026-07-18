@@ -383,24 +383,10 @@ export interface AddManualPlayerBody {
   byeWeek?: number;
 }
 
-export type GetLeaguesParams = {
-  sessionId: string;
-};
-
 export type GetLeagueTeamsParams = {
-  sessionId: string;
   season?: string;
 };
 
 export type GetLeagueSettingsParams = {
-  sessionId: string;
   season?: string;
-};
-
-export type GetSavedTradesParams = {
-  sessionId: string;
-};
-
-export type RefreshSavedTradeParams = {
-  sessionId: string;
 };

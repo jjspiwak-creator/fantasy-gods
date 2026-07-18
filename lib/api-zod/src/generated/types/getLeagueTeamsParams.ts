@@ -7,6 +7,5 @@
  */
 
 export type GetLeagueTeamsParams = {
-  sessionId: string;
   season?: string;
 };

@@ -25,8 +25,6 @@ import type {
   EspnConnectResponse,
   GetLeagueSettingsParams,
   GetLeagueTeamsParams,
-  GetLeaguesParams,
-  GetSavedTradesParams,
   HealthStatus,
   JoinManualLeagueBody,
   League,
@@ -35,7 +33,6 @@ import type {
   LoginBody,
   ManualLeagueWithMyTeam,
   ManualRosterPlayer,
-  RefreshSavedTradeParams,
   RegisterBody,
   SaveTradeBody,
   SavedTrade,
@@ -222,57 +219,39 @@ export const useConnectEspn = <
  * Returns all fantasy football leagues for the connected account
  * @summary Get user leagues
  */
-export const getGetLeaguesUrl = (params: GetLeaguesParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/espn/leagues?${stringifiedParams}`
-    : `/api/espn/leagues`;
+export const getGetLeaguesUrl = () => {
+  return `/api/espn/leagues`;
 };
 
-export const getLeagues = async (
-  params: GetLeaguesParams,
-  options?: RequestInit,
-): Promise<League[]> => {
-  return customFetch<League[]>(getGetLeaguesUrl(params), {
+export const getLeagues = async (options?: RequestInit): Promise<League[]> => {
+  return customFetch<League[]>(getGetLeaguesUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetLeaguesQueryKey = (params?: GetLeaguesParams) => {
-  return [`/api/espn/leagues`, ...(params ? [params] : [])] as const;
+export const getGetLeaguesQueryKey = () => {
+  return [`/api/espn/leagues`] as const;
 };
 
 export const getGetLeaguesQueryOptions = <
   TData = Awaited<ReturnType<typeof getLeagues>>,
   TError = ErrorType<ErrorResponse>,
->(
-  params: GetLeaguesParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getLeagues>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeagues>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetLeaguesQueryKey(params);
+  const queryKey = queryOptions?.queryKey ?? getGetLeaguesQueryKey();
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeagues>>> = ({
     signal,
-  }) => getLeagues(params, { signal, ...requestOptions });
+  }) => getLeagues({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getLeagues>>,
@@ -293,18 +272,15 @@ export type GetLeaguesQueryError = ErrorType<ErrorResponse>;
 export function useGetLeagues<
   TData = Awaited<ReturnType<typeof getLeagues>>,
   TError = ErrorType<ErrorResponse>,
->(
-  params: GetLeaguesParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getLeagues>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetLeaguesQueryOptions(params, options);
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeagues>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaguesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -319,7 +295,7 @@ export function useGetLeagues<
  */
 export const getGetLeagueTeamsUrl = (
   leagueId: string,
-  params: GetLeagueTeamsParams,
+  params?: GetLeagueTeamsParams,
 ) => {
   const normalizedParams = new URLSearchParams();
 
@@ -338,7 +314,7 @@ export const getGetLeagueTeamsUrl = (
 
 export const getLeagueTeams = async (
   leagueId: string,
-  params: GetLeagueTeamsParams,
+  params?: GetLeagueTeamsParams,
   options?: RequestInit,
 ): Promise<Team[]> => {
   return customFetch<Team[]>(getGetLeagueTeamsUrl(leagueId, params), {
@@ -362,7 +338,7 @@ export const getGetLeagueTeamsQueryOptions = <
   TError = ErrorType<ErrorResponse>,
 >(
   leagueId: string,
-  params: GetLeagueTeamsParams,
+  params?: GetLeagueTeamsParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getLeagueTeams>>,
@@ -407,7 +383,7 @@ export function useGetLeagueTeams<
   TError = ErrorType<ErrorResponse>,
 >(
   leagueId: string,
-  params: GetLeagueTeamsParams,
+  params?: GetLeagueTeamsParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getLeagueTeams>>,
@@ -432,7 +408,7 @@ export function useGetLeagueTeams<
  */
 export const getGetLeagueSettingsUrl = (
   leagueId: string,
-  params: GetLeagueSettingsParams,
+  params?: GetLeagueSettingsParams,
 ) => {
   const normalizedParams = new URLSearchParams();
 
@@ -451,7 +427,7 @@ export const getGetLeagueSettingsUrl = (
 
 export const getLeagueSettings = async (
   leagueId: string,
-  params: GetLeagueSettingsParams,
+  params?: GetLeagueSettingsParams,
   options?: RequestInit,
 ): Promise<LeagueSettings> => {
   return customFetch<LeagueSettings>(
@@ -478,7 +454,7 @@ export const getGetLeagueSettingsQueryOptions = <
   TError = ErrorType<ErrorResponse>,
 >(
   leagueId: string,
-  params: GetLeagueSettingsParams,
+  params?: GetLeagueSettingsParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getLeagueSettings>>,
@@ -524,7 +500,7 @@ export function useGetLeagueSettings<
   TError = ErrorType<ErrorResponse>,
 >(
   leagueId: string,
-  params: GetLeagueSettingsParams,
+  params?: GetLeagueSettingsParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getLeagueSettings>>,
@@ -639,57 +615,41 @@ export const useSimulateTrade = <
  * Returns all saved trade scenarios for the given session
  * @summary Get saved trade simulations
  */
-export const getGetSavedTradesUrl = (params: GetSavedTradesParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/trades/saved?${stringifiedParams}`
-    : `/api/trades/saved`;
+export const getGetSavedTradesUrl = () => {
+  return `/api/trades/saved`;
 };
 
 export const getSavedTrades = async (
-  params: GetSavedTradesParams,
   options?: RequestInit,
 ): Promise<SavedTrade[]> => {
-  return customFetch<SavedTrade[]>(getGetSavedTradesUrl(params), {
+  return customFetch<SavedTrade[]>(getGetSavedTradesUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetSavedTradesQueryKey = (params?: GetSavedTradesParams) => {
-  return [`/api/trades/saved`, ...(params ? [params] : [])] as const;
+export const getGetSavedTradesQueryKey = () => {
+  return [`/api/trades/saved`] as const;
 };
 
 export const getGetSavedTradesQueryOptions = <
   TData = Awaited<ReturnType<typeof getSavedTrades>>,
   TError = ErrorType<unknown>,
->(
-  params: GetSavedTradesParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getSavedTrades>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSavedTrades>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetSavedTradesQueryKey(params);
+  const queryKey = queryOptions?.queryKey ?? getGetSavedTradesQueryKey();
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof getSavedTrades>>> = ({
     signal,
-  }) => getSavedTrades(params, { signal, ...requestOptions });
+  }) => getSavedTrades({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getSavedTrades>>,
@@ -710,18 +670,15 @@ export type GetSavedTradesQueryError = ErrorType<unknown>;
 export function useGetSavedTrades<
   TData = Awaited<ReturnType<typeof getSavedTrades>>,
   TError = ErrorType<unknown>,
->(
-  params: GetSavedTradesParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getSavedTrades>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetSavedTradesQueryOptions(params, options);
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSavedTrades>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSavedTradesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -820,31 +777,15 @@ export const useSaveTrade = <
 /**
  * @summary Refresh trade scores using current ESPN player values
  */
-export const getRefreshSavedTradeUrl = (
-  tradeId: number,
-  params: RefreshSavedTradeParams,
-) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/trades/saved/${tradeId}/refresh?${stringifiedParams}`
-    : `/api/trades/saved/${tradeId}/refresh`;
+export const getRefreshSavedTradeUrl = (tradeId: number) => {
+  return `/api/trades/saved/${tradeId}/refresh`;
 };
 
 export const refreshSavedTrade = async (
   tradeId: number,
-  params: RefreshSavedTradeParams,
   options?: RequestInit,
 ): Promise<SavedTrade> => {
-  return customFetch<SavedTrade>(getRefreshSavedTradeUrl(tradeId, params), {
+  return customFetch<SavedTrade>(getRefreshSavedTradeUrl(tradeId), {
     ...options,
     method: "POST",
   });
@@ -857,14 +798,14 @@ export const getRefreshSavedTradeMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof refreshSavedTrade>>,
     TError,
-    { tradeId: number; params: RefreshSavedTradeParams },
+    { tradeId: number },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof refreshSavedTrade>>,
   TError,
-  { tradeId: number; params: RefreshSavedTradeParams },
+  { tradeId: number },
   TContext
 > => {
   const mutationKey = ["refreshSavedTrade"];
@@ -878,11 +819,11 @@ export const getRefreshSavedTradeMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof refreshSavedTrade>>,
-    { tradeId: number; params: RefreshSavedTradeParams }
+    { tradeId: number }
   > = (props) => {
-    const { tradeId, params } = props ?? {};
+    const { tradeId } = props ?? {};
 
-    return refreshSavedTrade(tradeId, params, requestOptions);
+    return refreshSavedTrade(tradeId, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -904,14 +845,14 @@ export const useRefreshSavedTrade = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof refreshSavedTrade>>,
     TError,
-    { tradeId: number; params: RefreshSavedTradeParams },
+    { tradeId: number },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof refreshSavedTrade>>,
   TError,
-  { tradeId: number; params: RefreshSavedTradeParams },
+  { tradeId: number },
   TContext
 > => {
   return useMutation(getRefreshSavedTradeMutationOptions(options));
