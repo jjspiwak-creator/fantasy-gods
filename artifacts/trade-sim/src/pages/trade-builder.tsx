@@ -76,10 +76,27 @@ function TradeBuilderCore({
   const [lastTransfers, setLastTransfers] = useState<PlayerTransfer[]>([]);
   const [dropsPerTeam, setDropsPerTeam] = useState<Record<string, string[]>>({});
 
+  const pruneTransfersForTeam = (teamId: string) => {
+    setTransfers((prev) => prev.filter((t) => t.fromTeamId !== teamId && t.toTeamId !== teamId));
+  };
+
   const handleTeamToggle = (teamId: string) => {
-    setSelectedTeamIds((prev) =>
-      prev.includes(teamId) ? prev.filter((id) => id !== teamId) : [...prev, teamId],
-    );
+    if (selectedTeamIds.includes(teamId)) {
+      pruneTransfersForTeam(teamId);
+      setSelectedTeamIds((prev) => prev.filter((id) => id !== teamId));
+    } else {
+      setSelectedTeamIds((prev) => [...prev, teamId]);
+    }
+  };
+
+  const handleRemoveTeamInBuilder = (teamId: string) => {
+    if (selectedTeamIds.length <= 2) return;
+    pruneTransfersForTeam(teamId);
+    setSelectedTeamIds((prev) => prev.filter((id) => id !== teamId));
+  };
+
+  const handleAddTeamInBuilder = (teamId: string) => {
+    setSelectedTeamIds((prev) => [...prev, teamId]);
   };
 
   const togglePlayerTransfer = (playerId: string, fromTeamId: string) => {
@@ -151,6 +168,7 @@ function TradeBuilderCore({
   if (!teams) return null;
 
   const selectedTeamsData = teams.filter((t) => selectedTeamIds.includes(t.id));
+  const availableTeams = teams.filter((t) => !selectedTeamIds.includes(t.id));
   const hasTransfers = transfers.length > 0;
 
   return (
@@ -275,7 +293,39 @@ function TradeBuilderCore({
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          {/* Team chip strip — add/remove teams without leaving step 2 */}
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedTeamsData.map((team) => (
+              <div
+                key={team.id}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-sm font-semibold text-primary"
+              >
+                <span>{team.name}</span>
+                <button
+                  disabled={selectedTeamIds.length <= 2}
+                  title={selectedTeamIds.length <= 2 ? "A trade needs at least 2 teams" : `Remove ${team.name}`}
+                  onClick={() => handleRemoveTeamInBuilder(team.id)}
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            {availableTeams.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value) handleAddTeamInBuilder(e.target.value); }}
+                className="text-xs bg-background border border-white/10 rounded-full px-3 py-1.5 text-muted-foreground hover:border-white/20 focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer"
+              >
+                <option value="" disabled>Add team…</option>
+                {availableTeams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {selectedTeamsData.map((team) => {
               const otherTeams = selectedTeamsData.filter((t) => t.id !== team.id);
               return (
@@ -438,7 +488,7 @@ function TradeBuilderCore({
             </div>
           )}
 
-          <div className="grid xl:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {simulationResult.teamResults.map((result) => (
               <TradeResultCard
                 key={result.teamId}
