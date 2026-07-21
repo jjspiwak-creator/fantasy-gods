@@ -85,6 +85,12 @@ export const GetLeagueTeamsResponseItem = zod.object({
       projectedPoints: zod.number(),
       tradeValue: zod.number(),
       isStarter: zod.boolean(),
+      lineupSlotId: zod
+        .number()
+        .optional()
+        .describe(
+          "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+        ),
       injuryStatus: zod.string().nullish(),
     }),
   ),
@@ -198,6 +204,12 @@ export const SimulateTradeBody = zod.object({
           projectedPoints: zod.number(),
           tradeValue: zod.number(),
           isStarter: zod.boolean(),
+          lineupSlotId: zod
+            .number()
+            .optional()
+            .describe(
+              "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+            ),
           injuryStatus: zod.string().nullish(),
         }),
       ),
@@ -265,6 +277,12 @@ export const SimulateTradeResponse = zod.object({
           projectedPoints: zod.number(),
           tradeValue: zod.number(),
           isStarter: zod.boolean(),
+          lineupSlotId: zod
+            .number()
+            .optional()
+            .describe(
+              "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+            ),
           injuryStatus: zod.string().nullish(),
         }),
       ),
@@ -278,6 +296,12 @@ export const SimulateTradeResponse = zod.object({
           projectedPoints: zod.number(),
           tradeValue: zod.number(),
           isStarter: zod.boolean(),
+          lineupSlotId: zod
+            .number()
+            .optional()
+            .describe(
+              "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+            ),
           injuryStatus: zod.string().nullish(),
         }),
       ),
@@ -291,6 +315,12 @@ export const SimulateTradeResponse = zod.object({
           projectedPoints: zod.number(),
           tradeValue: zod.number(),
           isStarter: zod.boolean(),
+          lineupSlotId: zod
+            .number()
+            .optional()
+            .describe(
+              "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+            ),
           injuryStatus: zod.string().nullish(),
         }),
       ),
@@ -304,6 +334,12 @@ export const SimulateTradeResponse = zod.object({
           projectedPoints: zod.number(),
           tradeValue: zod.number(),
           isStarter: zod.boolean(),
+          lineupSlotId: zod
+            .number()
+            .optional()
+            .describe(
+              "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+            ),
           injuryStatus: zod.string().nullish(),
         }),
       ),
@@ -380,6 +416,12 @@ export const GetSavedTradesResponseItem = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -393,6 +435,12 @@ export const GetSavedTradesResponseItem = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -406,6 +454,12 @@ export const GetSavedTradesResponseItem = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -419,6 +473,12 @@ export const GetSavedTradesResponseItem = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -513,6 +573,12 @@ export const SaveTradeBody = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -526,6 +592,12 @@ export const SaveTradeBody = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -539,6 +611,12 @@ export const SaveTradeBody = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -552,6 +630,12 @@ export const SaveTradeBody = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -649,6 +733,12 @@ export const RefreshSavedTradeResponse = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -662,6 +752,12 @@ export const RefreshSavedTradeResponse = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -675,6 +771,12 @@ export const RefreshSavedTradeResponse = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -688,6 +790,12 @@ export const RefreshSavedTradeResponse = zod.object({
             projectedPoints: zod.number(),
             tradeValue: zod.number(),
             isStarter: zod.boolean(),
+            lineupSlotId: zod
+              .number()
+              .optional()
+              .describe(
+                "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+              ),
             injuryStatus: zod.string().nullish(),
           }),
         ),
@@ -995,6 +1103,12 @@ export const GetManualLeagueTeamsResponseItem = zod.object({
       projectedPoints: zod.number(),
       tradeValue: zod.number(),
       isStarter: zod.boolean(),
+      lineupSlotId: zod
+        .number()
+        .optional()
+        .describe(
+          "Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.",
+        ),
       injuryStatus: zod.string().nullish(),
     }),
   ),

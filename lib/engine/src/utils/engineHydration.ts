@@ -200,9 +200,12 @@ export function buildEngineState(
   const espnTeams: EspnTeamInput[] = apiTeams.map((t) => {
     const entries: EspnRosterEntry[] = t.roster.map((p) => {
       const posId   = API_POSITION_ID[p.position]  ?? 0;
-      const slotId  = p.isStarter
-        ? (API_PRIMARY_SLOT[p.position]   ?? 20)
-        : 20;
+      const slotId =
+        typeof p.lineupSlotId === "number"
+          ? p.lineupSlotId
+          : p.isStarter
+            ? (API_PRIMARY_SLOT[p.position] ?? 20)
+            : 20;
       const eligible = API_ELIGIBLE_SLOTS[p.position] ?? [20];
 
       return {

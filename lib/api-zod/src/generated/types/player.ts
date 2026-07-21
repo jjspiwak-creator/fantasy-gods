@@ -15,6 +15,8 @@ export interface Player {
   projectedPoints: number;
   tradeValue: number;
   isStarter: boolean;
+  /** Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues. */
+  lineupSlotId?: number;
   /** @nullable */
   injuryStatus?: string | null;
 }

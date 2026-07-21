@@ -23,6 +23,7 @@ export interface EspnPlayer {
   projectedPoints: number;
   tradeValue: number;
   isStarter: boolean;
+  lineupSlotId?: number;
   injuryStatus: string | null;
 }
 
@@ -383,6 +384,7 @@ function parseRoster(entries: any[]): EspnPlayer[] {
       projectedPoints: projStats.appliedTotal || 0,
       tradeValue,
       isStarter: isStarterSlot(entry.lineupSlotId),
+      lineupSlotId: typeof entry.lineupSlotId === "number" ? entry.lineupSlotId : undefined,
       injuryStatus: injuryStatus === "ACTIVE" ? null : injuryStatus,
     };
   });

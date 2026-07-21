@@ -751,6 +751,9 @@ components:
           type: number
         isStarter:
           type: boolean
+        lineupSlotId:
+          type: integer
+          description: Raw ESPN lineup slot ID (e.g. 23 = FLEX). Absent for manual leagues.
         injuryStatus:
           type: ["string", "null"]
       required:
