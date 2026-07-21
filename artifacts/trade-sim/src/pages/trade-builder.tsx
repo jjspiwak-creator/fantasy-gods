@@ -32,6 +32,7 @@ import {
   BellOff,
 } from "lucide-react";
 import { cn, formatTradeValue, getGradeColor, getGradeBg } from "@/lib/utils";
+import { useLiveTradeGrade } from "@/hooks/useLiveTradeGrade";
 import type {
   TradeSimulationResult,
   TeamTradeResult,
@@ -158,6 +159,8 @@ function TradeBuilderCore({
       { onSuccess: () => setLocation("/saved-trades") },
     );
   };
+
+  const liveGrades = useLiveTradeGrade(teams, transfers);
 
   if (isLoading)
     return (
@@ -328,13 +331,31 @@ function TradeBuilderCore({
           <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {selectedTeamsData.map((team) => {
               const otherTeams = selectedTeamsData.filter((t) => t.id !== team.id);
+              const liveGrade = liveGrades?.find((g) => g.teamId === team.id) ?? null;
               return (
                 <Card key={team.id} className="border-t-4 border-t-primary/50">
                   <CardHeader className="border-b border-white/5 pb-4 bg-black/20">
-                    <CardTitle className="text-xl">{team.name}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Select players this team is giving up and choose where each goes.
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-xl">{team.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Select players this team is giving up and choose where each goes.
+                        </p>
+                      </div>
+                      {liveGrade && (
+                        <div className={cn(
+                          "flex flex-col items-center justify-center rounded-lg border-2 px-2 py-1 shrink-0",
+                          getGradeBg(liveGrade.grade)
+                        )}>
+                          <span className={cn("font-display text-lg font-black leading-none", getGradeColor(liveGrade.grade))}>
+                            {liveGrade.grade}
+                          </span>
+                          <span className={cn("text-xs font-bold tabular-nums", getGradeColor(liveGrade.grade))}>
+                            {liveGrade.score}/100
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="max-h-[600px] overflow-y-auto p-4 space-y-1.5">

@@ -62,7 +62,15 @@ export class TradeRejectedError extends Error {
   }
 }
 
-function calculateGrade(
+/**
+ * MIRROR CONTRACT — source of truth for the live grading formula.
+ * Any change to this function MUST be reflected verbatim in:
+ *   artifacts/trade-sim/src/hooks/useLiveTradeGrade.ts
+ * Parity tests enforce agreement:
+ *   artifacts/api-server/src/lib/__tests__/tradeSimulator.grades.test.ts
+ *   artifacts/trade-sim/src/hooks/__tests__/useLiveTradeGrade.test.ts
+ */
+export function calculateGrade(
   valueGiven: number,
   valueReceived: number,
   tradeValueChange: number,
