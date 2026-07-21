@@ -73,7 +73,7 @@ export function SavedTradesPage() {
               >
                 <Card className="overflow-hidden glass-panel border border-white/10">
                   {/* Header */}
-                  <div className="bg-black/30 px-5 py-4 flex justify-between items-center border-b border-white/5">
+                  <div className="bg-black/30 px-5 py-4 flex flex-wrap justify-between items-center gap-y-2 border-b border-white/5">
                     <div className="min-w-0">
                       <h3 className="text-base font-bold text-white truncate">{trade.name}</h3>
                       <div className="flex items-center gap-3 mt-1">

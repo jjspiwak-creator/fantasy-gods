@@ -177,7 +177,7 @@ function TradeBuilderCore({
   return (
     <div className="space-y-8 animate-in fade-in">
       <header className="mb-8">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground font-bold uppercase tracking-wider mb-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground font-bold uppercase tracking-wider mb-4">
           <div
             className={cn(
               "px-3 py-1 rounded-full border",
@@ -271,7 +271,7 @@ function TradeBuilderCore({
       {/* ── STEP 2: ASSIGN PLAYERS WITH DESTINATIONS ── */}
       {step === 2 && (
         <div className="space-y-6">
-          <div className="bg-secondary/30 border border-white/5 rounded-xl p-6 flex justify-between items-center glass-panel sticky top-4 z-50">
+          <div className="bg-secondary/30 border border-white/5 rounded-xl p-4 sm:p-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between glass-panel sticky top-4 z-50">
             <div>
               <h3 className="text-xl font-bold">Assign Players to Their Destinations</h3>
               <p className="text-muted-foreground mt-1">
@@ -281,14 +281,14 @@ function TradeBuilderCore({
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all"
+                className="flex-1 sm:flex-initial px-4 sm:px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all"
               >
                 Back
               </button>
               <button
                 disabled={!hasTransfers || simulateMutation.isPending}
                 onClick={handleSimulate}
-                className="px-6 py-3 rounded-xl font-bold uppercase bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 box-glow transition-all flex items-center gap-2"
+                className="flex-1 sm:flex-initial px-4 sm:px-6 py-3 rounded-xl font-bold uppercase bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 box-glow transition-all flex items-center justify-center gap-2"
               >
                 {simulateMutation.isPending ? "Simulating..." : "Run Simulation"}
                 <GitCompareArrows className="w-5 h-5" />
@@ -301,9 +301,14 @@ function TradeBuilderCore({
             {selectedTeamsData.map((team) => (
               <div
                 key={team.id}
+                title={team.name}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-sm font-semibold text-primary"
               >
-                <span>{team.name}</span>
+                <span>
+                  {selectedTeamsData.length >= 4
+                    ? (team.abbreviation || team.name.slice(0, 4).toUpperCase())
+                    : team.name}
+                </span>
                 <button
                   disabled={selectedTeamIds.length <= 2}
                   title={selectedTeamIds.length <= 2 ? "A trade needs at least 2 teams" : `Remove ${team.name}`}
@@ -336,7 +341,7 @@ function TradeBuilderCore({
                 <Card key={team.id} className="border-t-4 border-t-primary/50">
                   <CardHeader className="border-b border-white/5 pb-4 bg-black/20">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <CardTitle className="text-xl">{team.name}</CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">
                           Select players this team is giving up and choose where each goes.
@@ -450,7 +455,7 @@ function TradeBuilderCore({
       {/* ── STEP 3: RESULTS ── */}
       {step === 3 && simulationResult && (
         <div className="space-y-8">
-          <div className="flex justify-between items-center glass-panel p-6 rounded-2xl">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between glass-panel p-4 sm:p-6 rounded-2xl">
             <div>
               <h2 className="text-3xl font-display font-bold">
                 SIMULATION <span className="text-primary">COMPLETE</span>
@@ -470,7 +475,7 @@ function TradeBuilderCore({
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all"
+                className="flex-1 sm:flex-initial px-4 sm:px-6 py-3 rounded-xl font-bold uppercase border border-white/10 hover:bg-white/5 transition-all"
               >
                 Edit Trade
               </button>
@@ -478,7 +483,7 @@ function TradeBuilderCore({
                 <button
                   disabled={saveMutation.isPending || !overflowResolved}
                   onClick={handleSave}
-                  className="px-6 py-3 rounded-xl font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90 box-glow transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-initial px-4 sm:px-6 py-3 rounded-xl font-bold uppercase bg-primary text-primary-foreground hover:bg-primary/90 box-glow transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-5 h-5" />{" "}
                   {saveMutation.isPending ? "Saving..." : "Save Trade"}
