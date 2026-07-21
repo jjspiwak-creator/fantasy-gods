@@ -60,7 +60,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <GitCompareArrows className="w-4 h-4 text-primary" />
               </div>
               <div className="leading-none">
-                <span className="text-base font-display font-bold text-white">TRADE<span className="text-primary">SIM</span></span>
+                <span className="text-base font-display font-bold text-white">FANTASY{" "}<span className="text-primary">GODS</span></span>
               </div>
             </div>
           </Link>

@@ -55,9 +55,8 @@ export function AuthPage() {
         </div>
         <div>
           <h1 className="text-3xl font-display font-black uppercase leading-none tracking-wide">
-            TRADE<span className="text-primary">SIM</span>
+            FANTASY{" "}<span className="text-primary">GODS</span>
           </h1>
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mt-0.5">ESPN Fantasy</p>
         </div>
       </div>
 

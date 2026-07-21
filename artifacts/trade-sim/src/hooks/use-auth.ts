@@ -78,7 +78,7 @@ export function useRegisterMutation() {
       registerUser(data),
     onSuccess: (data) => {
       setAuth(data.token, data.user as UserProfile);
-      toast({ title: "Account created!", description: "Welcome to TradeSim." });
+      toast({ title: "Account created!", description: "Welcome to Fantasy Gods." });
     },
     onError: (err: any) => {
       toast({
