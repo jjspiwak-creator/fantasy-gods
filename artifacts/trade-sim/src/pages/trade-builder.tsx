@@ -357,9 +357,13 @@ function TradeBuilderCore({
                                 </span>
                                 <select
                                   value={transfer.toTeamId}
-                                  onChange={(e) =>
-                                    changeDestination(player.id, e.target.value)
-                                  }
+                                  onChange={(e) => {
+                                    const id = e.target.value;
+                                    if (availableTeams.some((t) => t.id === id)) {
+                                      handleAddTeamInBuilder(id);
+                                    }
+                                    changeDestination(player.id, id);
+                                  }}
                                   onClick={(e) => e.stopPropagation()}
                                   className="flex-1 min-w-0 text-xs bg-background border border-primary/30 rounded-lg px-2 py-1 text-primary focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer"
                                 >
@@ -368,6 +372,15 @@ function TradeBuilderCore({
                                       {t.name}
                                     </option>
                                   ))}
+                                  {availableTeams.length > 0 && (
+                                    <optgroup label="Add to trade →">
+                                      {availableTeams.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                          {t.name}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  )}
                                 </select>
                               </div>
                             )}
