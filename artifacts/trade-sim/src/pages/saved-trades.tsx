@@ -92,20 +92,22 @@ export function SavedTradesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-3 shrink-0">
-                      <button
-                        onClick={() => refreshMutation.mutate(trade.id)}
-                        disabled={isRefreshing}
-                        title="Refresh trade scores with current ESPN data"
-                        className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all border",
-                          stale
-                            ? "text-yellow-400 border-yellow-400/30 bg-yellow-400/10 hover:bg-yellow-400/20"
-                            : "text-muted-foreground border-white/10 hover:bg-white/5"
-                        )}
-                      >
-                        <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
-                        {isRefreshing ? "Refreshing..." : "Refresh"}
-                      </button>
+                      {sessionId && !trade.leagueId.includes("-") && (
+                        <button
+                          onClick={() => refreshMutation.mutate(trade.id)}
+                          disabled={isRefreshing}
+                          title="Refresh trade scores with current ESPN data"
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all border",
+                            stale
+                              ? "text-yellow-400 border-yellow-400/30 bg-yellow-400/10 hover:bg-yellow-400/20"
+                              : "text-muted-foreground border-white/10 hover:bg-white/5"
+                          )}
+                        >
+                          <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
+                          {isRefreshing ? "Refreshing..." : "Refresh"}
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteMutation.mutate(trade.id)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"

@@ -116,7 +116,7 @@ describe("calculateGrade — edge cases", () => {
     const result = calculateGrade(0, 0, 0, 100);
     assert.strictEqual(result.grade, "C");
     assert.strictEqual(result.score, 70);
-    assert.strictEqual(result.gradeRationale, "No players exchanged on this side.");
+    assert.strictEqual(result.gradeRationale, "No measurable value moved on this side.");
   });
 
   it("receives value, gives nothing → A+ / 100", () => {

@@ -32,6 +32,7 @@ export function ManualLeaguePage() {
 
   const [expandedRoster, setExpandedRoster] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ teamId: string; value: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const renameMutation = useRenameManualTeam({
     mutation: {
@@ -75,7 +76,24 @@ export function ManualLeaguePage() {
             MANUAL <span className="text-primary">LEAGUE</span>
           </h1>
           {leagueItem && (
-            <p className="text-muted-foreground mt-1">{leagueItem.league.name}</p>
+            <>
+              <p className="text-muted-foreground mt-1">{leagueItem.league.name}</p>
+              {viewerIsCommissioner && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(leagueItem.league.inviteCode);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  }}
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-xs border border-primary/20 bg-primary/5 px-2.5 py-1 rounded-lg hover:bg-primary/10 transition-colors"
+                  title="Tap to copy invite code"
+                >
+                  <span className="text-muted-foreground font-bold">Invite code:</span>
+                  <span className="font-mono tracking-wider text-primary">{leagueItem.league.inviteCode}</span>
+                  {copied && <span className="text-success ml-1">Copied!</span>}
+                </button>
+              )}
+            </>
           )}
         </div>
         <button

@@ -77,7 +77,7 @@ export function calculateGrade(
   rosterValueBefore: number
 ): { grade: string; score: number; gradeRationale: string } {
   if (valueGiven === 0 && valueReceived === 0) {
-    return { grade: "C", score: 70, gradeRationale: "No players exchanged on this side." };
+    return { grade: "C", score: 70, gradeRationale: "No measurable value moved on this side." };
   }
 
   if (valueGiven === 0) {

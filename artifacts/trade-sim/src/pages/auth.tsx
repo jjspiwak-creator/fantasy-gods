@@ -16,6 +16,7 @@ export function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const [registerError, setRegisterError] = useState<string | null>(null);
   const registerMutation = useRegisterMutation();
   const loginMutation = useLoginMutation();
 
@@ -31,10 +32,18 @@ export function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRegisterError(null);
     if (mode === "register") {
       registerMutation.mutate(
         { email, password },
-        { onSuccess: () => setLocation("/leagues") }
+        {
+          onSuccess: () => setLocation("/leagues"),
+          onError: (err: any) => {
+            if (err?.response?.status === 409) {
+              setRegisterError("That email is already registered — try logging in.");
+            }
+          },
+        }
       );
     } else {
       loginMutation.mutate(
@@ -146,6 +155,12 @@ export function AuthPage() {
                 </button>
               </div>
             </div>
+
+            {mode === "register" && registerError && (
+              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-2.5">
+                {registerError}
+              </p>
+            )}
 
             <button
               type="submit"
