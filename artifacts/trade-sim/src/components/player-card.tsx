@@ -1,5 +1,5 @@
 import { Player } from "@workspace/api-client-react";
-import { cn, getPositionColor } from "@/lib/utils";
+import { cn, getPositionColor, normalizeValue } from "@/lib/utils";
 import { Activity, ShieldAlert, ArrowRightCircle } from "lucide-react";
 
 interface PlayerCardProps {
@@ -9,9 +9,10 @@ interface PlayerCardProps {
   actionIcon?: "add" | "remove" | "transfer";
   className?: string;
   compact?: boolean;
+  leagueMax: number;
 }
 
-export function PlayerCard({ player, onClick, selected, actionIcon, className, compact = false }: PlayerCardProps) {
+export function PlayerCard({ player, onClick, selected, actionIcon, className, compact = false, leagueMax }: PlayerCardProps) {
   return (
     <div 
       onClick={onClick}
@@ -66,7 +67,7 @@ export function PlayerCard({ player, onClick, selected, actionIcon, className, c
               compact ? "text-lg" : "text-xl",
               selected ? "text-primary" : "text-white"
             )}>
-              {player.tradeValue.toFixed(1)}
+              {normalizeValue(player.tradeValue, leagueMax)}
             </div>
           </div>
 

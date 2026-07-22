@@ -3,7 +3,7 @@ import { useSession } from "@/hooks/use-session";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatTradeValue, cn, getGradeColor, getGradeBg } from "@/lib/utils";
+import { cn, getGradeColor, getGradeBg } from "@/lib/utils";
 import { Trash2, Scale, CalendarDays, RefreshCw, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -154,13 +154,6 @@ export function SavedTradesPage() {
                               <p className="text-xs text-muted-foreground italic">{rationale}</p>
                             )}
 
-                            {/* Value change */}
-                            <div className={cn(
-                              "text-sm font-bold tabular-nums",
-                              tr.tradeValueChange > 0 ? "text-success" : tr.tradeValueChange < 0 ? "text-destructive" : "text-muted-foreground"
-                            )}>
-                              {formatTradeValue(tr.tradeValueChange)} value
-                            </div>
 
                             {/* Players */}
                             <div className="space-y-2">

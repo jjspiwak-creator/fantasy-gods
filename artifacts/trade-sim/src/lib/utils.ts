@@ -9,6 +9,14 @@ export function formatTradeValue(value: number): string {
   return value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1);
 }
 
+export function normalizeValue(value: number, max: number): number {
+  return max > 0 ? Math.max(0, Math.min(100, Math.round((value / max) * 100))) : 0;
+}
+
+export function normalizeDelta(delta: number, max: number): number {
+  return max > 0 ? Math.max(-100, Math.min(100, Math.round((delta / max) * 100))) : 0;
+}
+
 export function getPositionColor(position: string): string {
   switch (position.toUpperCase()) {
     case 'QB': return 'text-pink-400 bg-pink-400/10 border-pink-400/20';

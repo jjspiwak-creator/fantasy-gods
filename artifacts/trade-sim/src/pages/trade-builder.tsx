@@ -31,7 +31,7 @@ import {
   X,
   BellOff,
 } from "lucide-react";
-import { cn, formatTradeValue, getGradeColor, getGradeBg } from "@/lib/utils";
+import { cn, formatTradeValue, getGradeColor, getGradeBg, normalizeValue, normalizeDelta } from "@/lib/utils";
 import { useLiveTradeGrade } from "@/hooks/useLiveTradeGrade";
 import type {
   TradeSimulationResult,
@@ -172,6 +172,12 @@ function TradeBuilderCore({
 
   const selectedTeamsData = teams.filter((t) => selectedTeamIds.includes(t.id));
   const availableTeams = teams.filter((t) => !selectedTeamIds.includes(t.id));
+  const leagueMax = teams.length > 0
+    ? Math.max(0, ...teams.flatMap((t) => t.roster.map((p) => p.tradeValue)))
+    : 0;
+  const rosterMax = teams.length > 0
+    ? Math.max(0, ...teams.map((t) => t.roster.reduce((s, p) => s + p.tradeValue, 0)))
+    : 0;
   const hasTransfers = transfers.length > 0;
 
   return (
@@ -374,6 +380,7 @@ function TradeBuilderCore({
                               selected={isSelected}
                               onClick={() => togglePlayerTransfer(player.id, team.id)}
                               compact
+                              leagueMax={leagueMax}
                             />
                             {isSelected && otherTeams.length > 0 && (
                               <div className="flex items-center gap-2 px-3 pt-1 pb-1.5">
@@ -468,7 +475,9 @@ function TradeBuilderCore({
                     simulationResult.overallBalance >= 0 ? "text-success" : "text-destructive",
                   )}
                 >
-                  {formatTradeValue(simulationResult.overallBalance)}
+                  {normalizeDelta(simulationResult.overallBalance, leagueMax) > 0
+                    ? `+${normalizeDelta(simulationResult.overallBalance, leagueMax)}`
+                    : String(normalizeDelta(simulationResult.overallBalance, leagueMax))}
                 </span>
               </p>
             </div>
@@ -498,6 +507,7 @@ function TradeBuilderCore({
               dropsPerTeam={dropsPerTeam}
               onToggleDrop={toggleDrop}
               resolved={overflowResolved}
+              leagueMax={leagueMax}
             />
           )}
 
@@ -533,6 +543,8 @@ function TradeBuilderCore({
                 key={result.teamId}
                 result={result}
                 droppedIds={dropsPerTeam[result.teamId] ?? []}
+                leagueMax={leagueMax}
+                rosterMax={rosterMax}
               />
             ))}
           </div>
@@ -601,11 +613,13 @@ function RosterOverflowSection({
   dropsPerTeam,
   onToggleDrop,
   resolved,
+  leagueMax,
 }: {
   teamResults: TeamTradeResult[];
   dropsPerTeam: Record<string, string[]>;
   onToggleDrop: (teamId: string, playerId: string, excess: number) => void;
   resolved: boolean;
+  leagueMax: number;
 }) {
   const overflowing = teamResults.filter((r) => r.rosterOverflow);
   if (overflowing.length === 0) return null;
@@ -732,7 +746,7 @@ function RosterOverflowSection({
                             )}
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            {player.nflTeam} · {player.tradeValue.toFixed(1)} val
+                            {player.nflTeam} · {normalizeValue(player.tradeValue, leagueMax)} val
                           </span>
                         </div>
 
@@ -765,9 +779,13 @@ function RosterOverflowSection({
 function TradeResultCard({
   result,
   droppedIds,
+  leagueMax,
+  rosterMax,
 }: {
   result: TeamTradeResult;
   droppedIds: string[];
+  leagueMax: number;
+  rosterMax: number;
 }) {
   const gradeColor = getGradeColor(result.grade);
   const gradeBg = getGradeBg(result.grade);
@@ -814,10 +832,12 @@ function TradeResultCard({
                 : "text-muted-foreground",
           )}
         >
-          {formatTradeValue(result.tradeValueChange)}
+          {normalizeDelta(result.tradeValueChange, leagueMax) > 0
+            ? `+${normalizeDelta(result.tradeValueChange, leagueMax)}`
+            : String(normalizeDelta(result.tradeValueChange, leagueMax))}
         </span>
         <span className="text-xs text-muted-foreground ml-auto">
-          {result.tradeValueBefore.toFixed(1)} → {result.tradeValueAfter.toFixed(1)}
+          {normalizeValue(result.tradeValueBefore, rosterMax)} → {normalizeValue(result.tradeValueAfter, rosterMax)}
         </span>
         {result.rosterOverflow && (
           <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full ml-2">
@@ -839,6 +859,7 @@ function TradeResultCard({
                   player={p}
                   compact
                   className="bg-destructive/5 border-destructive/20"
+                  leagueMax={leagueMax}
                 />
               ))
             ) : (
@@ -858,6 +879,7 @@ function TradeResultCard({
                   player={p}
                   compact
                   className="bg-success/5 border-success/20"
+                  leagueMax={leagueMax}
                 />
               ))
             ) : (
@@ -881,7 +903,7 @@ function TradeResultCard({
                           {p.name}
                         </span>
                         <span className="text-xs text-muted-foreground ml-auto">
-                          {p.tradeValue.toFixed(1)}
+                          {normalizeValue(p.tradeValue, leagueMax)}
                         </span>
                       </div>
                     ))}

@@ -1,5 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useLeagueTeams } from "@/hooks/use-espn-api";
+import { normalizeValue } from "@/lib/utils";
 import { useEngineHydration } from "@/hooks/useEngineHydration";
 import { useLeagueState } from "@/context/LeagueStateContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +22,8 @@ export function LeagueDetailsPage() {
   if (!teams || teams.length === 0) {
     return <div>No teams found for this league.</div>;
   }
+
+  const leagueMax = Math.max(0, ...teams.flatMap((t) => t.roster.map((p) => p.tradeValue)));
 
   return (
     <div className="space-y-8 animate-in fade-in">
@@ -88,7 +91,7 @@ export function LeagueDetailsPage() {
                         {player.position}
                       </span>
                       <span className="text-sm text-white font-medium truncate flex-1">{player.name}</span>
-                      <span className="text-sm font-display font-bold text-primary tabular-nums">{player.tradeValue.toFixed(1)}</span>
+                      <span className="text-sm font-display font-bold text-primary tabular-nums">{normalizeValue(player.tradeValue, leagueMax)}</span>
                     </div>
                   ))}
                   {team.roster.length > 5 && (
