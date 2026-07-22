@@ -114,6 +114,12 @@
   }
 }
 
+/* Splash fade-out */
+.splash-fade-out {
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
