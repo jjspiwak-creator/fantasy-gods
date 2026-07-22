@@ -33,7 +33,9 @@ import type {
   LoginBody,
   ManualLeagueWithMyTeam,
   ManualRosterPlayer,
+  ManualTeam,
   RegisterBody,
+  RenameTeamBody,
   SaveTradeBody,
   SavedTrade,
   SimulateTradeBody,
@@ -1598,6 +1600,94 @@ export function useGetManualLeagueTeams<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Rename a manual team (owner or commissioner)
+ */
+export const getRenameManualTeamUrl = (leagueId: string, teamId: string) => {
+  return `/api/manual/leagues/${leagueId}/teams/${teamId}`;
+};
+
+export const renameManualTeam = async (
+  leagueId: string,
+  teamId: string,
+  renameTeamBody: RenameTeamBody,
+  options?: RequestInit,
+): Promise<ManualTeam> => {
+  return customFetch<ManualTeam>(getRenameManualTeamUrl(leagueId, teamId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(renameTeamBody),
+  });
+};
+
+export const getRenameManualTeamMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof renameManualTeam>>,
+    TError,
+    { leagueId: string; teamId: string; data: BodyType<RenameTeamBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof renameManualTeam>>,
+  TError,
+  { leagueId: string; teamId: string; data: BodyType<RenameTeamBody> },
+  TContext
+> => {
+  const mutationKey = ["renameManualTeam"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof renameManualTeam>>,
+    { leagueId: string; teamId: string; data: BodyType<RenameTeamBody> }
+  > = (props) => {
+    const { leagueId, teamId, data } = props ?? {};
+
+    return renameManualTeam(leagueId, teamId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RenameManualTeamMutationResult = NonNullable<
+  Awaited<ReturnType<typeof renameManualTeam>>
+>;
+export type RenameManualTeamMutationBody = BodyType<RenameTeamBody>;
+export type RenameManualTeamMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Rename a manual team (owner or commissioner)
+ */
+export const useRenameManualTeam = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof renameManualTeam>>,
+    TError,
+    { leagueId: string; teamId: string; data: BodyType<RenameTeamBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof renameManualTeam>>,
+  TError,
+  { leagueId: string; teamId: string; data: BodyType<RenameTeamBody> },
+  TContext
+> => {
+  return useMutation(getRenameManualTeamMutationOptions(options));
+};
 
 /**
  * @summary Add a player to a team (member-gated)

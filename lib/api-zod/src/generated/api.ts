@@ -1118,6 +1118,28 @@ export const GetManualLeagueTeamsResponse = zod.array(
 );
 
 /**
+ * @summary Rename a manual team (owner or commissioner)
+ */
+export const RenameManualTeamParams = zod.object({
+  leagueId: zod.coerce.string(),
+  teamId: zod.coerce.string(),
+});
+
+export const renameManualTeamBodyNameMax = 60;
+
+export const RenameManualTeamBody = zod.object({
+  name: zod.string().min(1).max(renameManualTeamBodyNameMax),
+});
+
+export const RenameManualTeamResponse = zod.object({
+  id: zod.string(),
+  leagueId: zod.string(),
+  name: zod.string(),
+  ownerUserId: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary Add a player to a team (member-gated)
  */
 export const AddManualPlayerParams = zod.object({

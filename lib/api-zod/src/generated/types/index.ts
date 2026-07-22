@@ -37,6 +37,7 @@ export * from "./manualTeam";
 export * from "./player";
 export * from "./playerTransfer";
 export * from "./registerBody";
+export * from "./renameTeamBody";
 export * from "./rosterOverflow";
 export * from "./savedTrade";
 export * from "./saveTradeBody";

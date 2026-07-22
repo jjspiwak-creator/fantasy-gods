@@ -3,11 +3,15 @@ import { useParams, Link, useLocation } from "wouter";
 import {
   useGetManualLeagueTeams,
   useListMyManualLeagues,
+  useRenameManualTeam,
+  getGetManualLeagueTeamsQueryKey,
+  getListMyManualLeaguesQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useManualEngineHydration } from "@/hooks/useEngineHydration";
 import { RosterEditor } from "@/components/manual/RosterEditor";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, GitCompareArrows, ArrowLeft, Shield, Star, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, GitCompareArrows, ArrowLeft, Shield, Star, ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function ManualLeaguePage() {
@@ -16,6 +20,7 @@ export function ManualLeaguePage() {
 
   const teamsQuery = useGetManualLeagueTeams(leagueId || "");
   const myLeaguesQuery = useListMyManualLeagues();
+  const queryClient = useQueryClient();
 
   useManualEngineHydration(leagueId, teamsQuery.data);
 
@@ -23,7 +28,20 @@ export function ManualLeaguePage() {
   const myTeamId = leagueItem?.myTeamId;
   const creatorTeamId = leagueItem?.creatorTeamId ?? null;
 
+  const viewerIsCommissioner = myTeamId != null && myTeamId === creatorTeamId;
+
   const [expandedRoster, setExpandedRoster] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ teamId: string; value: string } | null>(null);
+
+  const renameMutation = useRenameManualTeam({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetManualLeagueTeamsQueryKey(leagueId || "") });
+        queryClient.invalidateQueries({ queryKey: getListMyManualLeaguesQueryKey() });
+        setRenaming(null);
+      },
+    },
+  });
 
   if (teamsQuery.isLoading || myLeaguesQuery.isLoading) {
     return (
@@ -80,6 +98,8 @@ export function ManualLeaguePage() {
             const isMe = team.id === myTeamId;
             const isCommissioner = team.id === creatorTeamId;
             const isExpanded = expandedRoster === team.id;
+            const canRename = isMe || viewerIsCommissioner;
+            const isRenaming = renaming?.teamId === team.id;
 
             return (
               <motion.div
@@ -93,8 +113,61 @@ export function ManualLeaguePage() {
                 >
                   <CardContent className="p-6 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold text-white">{team.name}</h3>
+                      <div className="flex-1 min-w-0 pr-2">
+                        {isRenaming ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={renaming.value}
+                              maxLength={60}
+                              autoFocus
+                              onChange={(e) => setRenaming({ teamId: team.id, value: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const trimmed = renaming.value.trim();
+                                  if (trimmed.length > 0) {
+                                    renameMutation.mutate({ leagueId: leagueId!, teamId: team.id, data: { name: trimmed } });
+                                  }
+                                }
+                                if (e.key === "Escape") setRenaming(null);
+                              }}
+                              className="text-lg font-bold bg-white/5 border border-white/20 rounded-lg px-3 py-1 text-white w-full focus:outline-none focus:border-primary/60"
+                            />
+                            <button
+                              onClick={() => {
+                                const trimmed = renaming.value.trim();
+                                if (trimmed.length > 0) {
+                                  renameMutation.mutate({ leagueId: leagueId!, teamId: team.id, data: { name: trimmed } });
+                                }
+                              }}
+                              disabled={renameMutation.isPending}
+                              className="p-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition-colors disabled:opacity-50"
+                              aria-label="Save name"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setRenaming(null)}
+                              className="p-1.5 rounded-lg bg-white/5 text-muted-foreground hover:text-white transition-colors"
+                              aria-label="Cancel rename"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-white truncate">{team.name}</h3>
+                            {canRename && (
+                              <button
+                                onClick={() => setRenaming({ teamId: team.id, value: team.name })}
+                                className="p-1 rounded text-muted-foreground hover:text-primary transition-colors flex-shrink-0"
+                                aria-label="Rename team"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                           <Users className="w-4 h-4" /> {team.ownerName}
                         </p>

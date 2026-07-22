@@ -52,6 +52,38 @@ async function isMember(leagueId: string, userId: string): Promise<boolean> {
   return !!team;
 }
 
+export const RenameTeamBodySchema = z.object({
+  name: z.string().min(1).max(60),
+});
+
+export function validateRenameBody(raw: unknown):
+  | { ok: true; name: string }
+  | { ok: false; error: string } {
+  if (typeof raw !== "object" || raw === null) {
+    return { ok: false, error: "Invalid request body." };
+  }
+  const nameProp = (raw as Record<string, unknown>).name;
+  if (typeof nameProp !== "string") {
+    return { ok: false, error: "name must be a string." };
+  }
+  const trimmed = nameProp.trim();
+  if (trimmed.length === 0) {
+    return { ok: false, error: "Name cannot be blank." };
+  }
+  if (trimmed.length > 60) {
+    return { ok: false, error: "Name must be 60 characters or fewer." };
+  }
+  return { ok: true, name: trimmed };
+}
+
+export function canRenameTeam(
+  callerId: string,
+  teamOwnerUserId: string | null,
+  leagueCreatorUserId: string,
+): boolean {
+  return callerId === teamOwnerUserId || callerId === leagueCreatorUserId;
+}
+
 const CreateLeagueBody = z.object({
   name: z.string().min(1).max(60),
   teamCount: z.number().int().min(2).max(20),
@@ -463,6 +495,66 @@ router.delete(
     } catch (err) {
       logger.error({ err }, "Error removing manual player");
       res.status(500).json({ error: "Failed to remove player." });
+    }
+  },
+);
+
+// R7: PATCH /manual/leagues/:leagueId/teams/:teamId (owner or commissioner)
+router.patch(
+  "/manual/leagues/:leagueId/teams/:teamId",
+  async (req, res): Promise<void> => {
+    const caller = requireAuth(req, res);
+    if (!caller) return;
+
+    const { leagueId, teamId } = req.params;
+
+    const validation = validateRenameBody(req.body);
+    if (!validation.ok) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    try {
+      const [team] = await db
+        .select()
+        .from(manualTeamsTable)
+        .where(
+          and(
+            eq(manualTeamsTable.id, teamId),
+            eq(manualTeamsTable.leagueId, leagueId),
+          ),
+        );
+
+      if (!team) {
+        res.status(404).json({ error: "Team not found in this league." });
+        return;
+      }
+
+      const [league] = await db
+        .select({ creatorUserId: manualLeaguesTable.creatorUserId })
+        .from(manualLeaguesTable)
+        .where(eq(manualLeaguesTable.id, leagueId));
+
+      if (!league) {
+        res.status(404).json({ error: "League not found." });
+        return;
+      }
+
+      if (!canRenameTeam(caller.userId, team.ownerUserId, league.creatorUserId)) {
+        res.status(403).json({ error: "You are not authorized to rename this team." });
+        return;
+      }
+
+      const [updated] = await db
+        .update(manualTeamsTable)
+        .set({ name: validation.name })
+        .where(eq(manualTeamsTable.id, teamId))
+        .returning();
+
+      res.status(200).json(serializeTeam(updated));
+    } catch (err) {
+      logger.error({ err }, "Error renaming manual team");
+      res.status(500).json({ error: "Failed to rename team." });
     }
   },
 );

@@ -386,6 +386,14 @@ export interface AddManualPlayerBody {
   byeWeek?: number;
 }
 
+export interface RenameTeamBody {
+  /**
+   * @minLength 1
+   * @maxLength 60
+   */
+  name: string;
+}
+
 export type GetLeagueTeamsParams = {
   season?: string;
 };
