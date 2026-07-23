@@ -250,7 +250,7 @@ router.post("/manual/leagues/join", async (req, res): Promise<void> => {
           isNull(manualTeamsTable.ownerUserId),
         ),
       )
-      .orderBy(asc(manualTeamsTable.createdAt), asc(manualTeamsTable.id))
+      .orderBy(asc(manualTeamsTable.ownerDeparted), asc(manualTeamsTable.createdAt), asc(manualTeamsTable.id))
       .limit(1);
 
     if (!unowned) {
@@ -260,7 +260,7 @@ router.post("/manual/leagues/join", async (req, res): Promise<void> => {
 
     const [claimed] = await db
       .update(manualTeamsTable)
-      .set({ ownerUserId: caller.userId, ...(teamName ? { name: teamName } : {}) })
+      .set({ ownerUserId: caller.userId, ownerDeparted: false, ...(teamName ? { name: teamName } : {}) })
       .where(eq(manualTeamsTable.id, unowned.id))
       .returning();
 

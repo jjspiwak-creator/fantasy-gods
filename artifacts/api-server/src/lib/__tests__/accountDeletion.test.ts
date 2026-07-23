@@ -303,3 +303,92 @@ describe("GET /api/auth/me — after account deletion: returns 401", () => {
     assert.strictEqual(r.status, 401);
   });
 });
+
+// ---------------------------------------------------------------------------
+// T7 — Fresh-teams-first: joiner receives the non-departed slot
+// ---------------------------------------------------------------------------
+
+describe("POST /manual/leagues/join — T7: fresh-teams-first ordering", () => {
+  it("assigns the never-departed team when both a departed and a fresh slot exist", async () => {
+    const creatorEmail = `join-t7-creator-${randomUUID().slice(0, 8)}@test.local`;
+    const joinerEmail = `join-t7-joiner-${randomUUID().slice(0, 8)}@test.local`;
+    const creator = await createUser(creatorEmail);
+    const joiner = await createUser(joinerEmail);
+
+    const league = await createLeague(creator.id);
+
+    // Team A: departed slot (ownerUserId=null, ownerDeparted=true)
+    const [teamA] = await db
+      .insert(manualTeamsTable)
+      .values({ leagueId: league.id, name: "Departed Slot", ownerUserId: null, ownerDeparted: true })
+      .returning();
+
+    // Team B: fresh unowned slot (ownerUserId=null, ownerDeparted=false) — created later so createdAt >= teamA
+    const [teamB] = await db
+      .insert(manualTeamsTable)
+      .values({ leagueId: league.id, name: "Fresh Slot", ownerUserId: null })
+      .returning();
+
+    const token = signToken({ userId: joiner.id, email: joiner.email });
+    const r = await req(
+      "POST",
+      "/manual/leagues/join",
+      { inviteCode: league.inviteCode },
+      { Authorization: `Bearer ${token}` },
+    );
+
+    assert.strictEqual(r.status, 200);
+    const body = r.body as { myTeam: { id: string; ownerDeparted: boolean } };
+    assert.strictEqual(body.myTeam.id, teamB.id, "joiner should receive the fresh (non-departed) team");
+    assert.strictEqual(body.myTeam.ownerDeparted, false, "fresh team ownerDeparted should remain false");
+
+    // cleanup
+    await db.delete(manualLeaguesTable).where(eq(manualLeaguesTable.id, league.id)).catch(() => {});
+    await db.delete(usersTable).where(eq(usersTable.id, creator.id)).catch(() => {});
+    await db.delete(usersTable).where(eq(usersTable.id, joiner.id)).catch(() => {});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T8 — Claim departed slot: ownerUserId set, ownerDeparted reset to false
+// ---------------------------------------------------------------------------
+
+describe("POST /manual/leagues/join — T8: claiming a departed slot resets ownerDeparted", () => {
+  it("sets ownerUserId and clears ownerDeparted when the only available slot is departed", async () => {
+    const creatorEmail = `join-t8-creator-${randomUUID().slice(0, 8)}@test.local`;
+    const joinerEmail = `join-t8-joiner-${randomUUID().slice(0, 8)}@test.local`;
+    const creator = await createUser(creatorEmail);
+    const joiner = await createUser(joinerEmail);
+
+    const league = await createLeague(creator.id);
+
+    // Only one slot, and it is departed
+    const [departedTeam] = await db
+      .insert(manualTeamsTable)
+      .values({ leagueId: league.id, name: "Only Slot", ownerUserId: null, ownerDeparted: true })
+      .returning();
+
+    const token = signToken({ userId: joiner.id, email: joiner.email });
+    const r = await req(
+      "POST",
+      "/manual/leagues/join",
+      { inviteCode: league.inviteCode },
+      { Authorization: `Bearer ${token}` },
+    );
+
+    assert.strictEqual(r.status, 200);
+    const body = r.body as { myTeam: { id: string; ownerDeparted: boolean } };
+    assert.strictEqual(body.myTeam.id, departedTeam.id, "joiner should receive the departed team");
+    assert.strictEqual(body.myTeam.ownerDeparted, false, "ownerDeparted should be reset to false after claim");
+
+    // Confirm directly in DB
+    const [row] = await db.select().from(manualTeamsTable).where(eq(manualTeamsTable.id, departedTeam.id));
+    assert.strictEqual(row.ownerUserId, joiner.id, "ownerUserId should be set to joiner");
+    assert.strictEqual(row.ownerDeparted, false, "ownerDeparted should be false in DB");
+
+    // cleanup
+    await db.delete(manualLeaguesTable).where(eq(manualLeaguesTable.id, league.id)).catch(() => {});
+    await db.delete(usersTable).where(eq(usersTable.id, creator.id)).catch(() => {});
+    await db.delete(usersTable).where(eq(usersTable.id, joiner.id)).catch(() => {});
+  });
+});

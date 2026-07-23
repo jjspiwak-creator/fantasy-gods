@@ -13,6 +13,9 @@ members. Leagues created by the deleted user in which no other
 member has claimed a team are deleted entirely. Manual leagues
 currently store no shared trade history; saved trades are private
 simulations and are purged with the identity that owns them.
+A departed manager's team may later be claimed by a new league
+member, at which point the label clears and the team displays its
+new manager.
 
 Backups: the production database is Replit's managed Postgres
 (Neon-backed) with platform point-in-time restore. Restore history
