@@ -5,7 +5,7 @@ export const manualLeaguesTable = pgTable("manual_leagues", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   inviteCode: text("invite_code").notNull().unique(),
-  creatorUserId: uuid("creator_user_id").notNull().references(() => usersTable.id),
+  creatorUserId: uuid("creator_user_id").references(() => usersTable.id, { onDelete: "set null" }),
   teamCount: integer("team_count").notNull(),
   rosterSlots: jsonb("roster_slots").notNull(),
   scoringBasics: jsonb("scoring_basics").notNull(),
@@ -17,6 +17,7 @@ export const manualTeamsTable = pgTable("manual_teams", {
   leagueId: uuid("league_id").notNull().references(() => manualLeaguesTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   ownerUserId: uuid("owner_user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  ownerDeparted: boolean("owner_departed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("manual_teams_league_id_idx").on(table.leagueId),

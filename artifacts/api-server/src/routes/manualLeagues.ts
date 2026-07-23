@@ -79,7 +79,7 @@ export function validateRenameBody(raw: unknown):
 export function canRenameTeam(
   callerId: string,
   teamOwnerUserId: string | null,
-  leagueCreatorUserId: string,
+  leagueCreatorUserId: string | null,
 ): boolean {
   return callerId === teamOwnerUserId || callerId === leagueCreatorUserId;
 }
@@ -124,6 +124,7 @@ function serializeTeam(t: typeof manualTeamsTable.$inferSelect) {
     leagueId: t.leagueId,
     name: t.name,
     ownerUserId: t.ownerUserId,
+    ownerDeparted: t.ownerDeparted,
     createdAt: t.createdAt.toISOString(),
   };
 }
@@ -360,6 +361,7 @@ router.get("/manual/leagues/:leagueId/teams", async (req, res): Promise<void> =>
         id: team.id,
         name: team.name,
         ownerName: team.ownerUserId ? "Claimed" : "Unowned",
+        ownerDeparted: team.ownerDeparted,
         wins: 0,
         losses: 0,
         ties: 0,

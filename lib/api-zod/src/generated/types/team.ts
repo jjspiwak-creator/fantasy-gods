@@ -18,5 +18,6 @@ export interface Team {
   pointsFor: number;
   pointsAgainst: number;
   totalTradeValue: number;
+  ownerDeparted?: boolean;
   roster: Player[];
 }

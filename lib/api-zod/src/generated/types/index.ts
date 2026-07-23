@@ -11,6 +11,7 @@ export * from "./authToken";
 export * from "./createManualLeagueBody";
 export * from "./createManualLeagueBodyRosterSlots";
 export * from "./createManualLeagueBodyScoringBasics";
+export * from "./deleteAccountBody";
 export * from "./errorResponse";
 export * from "./espnConnectBody";
 export * from "./espnConnectResponse";

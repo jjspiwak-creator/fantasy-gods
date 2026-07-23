@@ -187,7 +187,7 @@ export function ManualLeaguePage() {
                           </div>
                         )}
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <Users className="w-4 h-4" /> {team.ownerName}
+                          <Users className="w-4 h-4" /> {team.ownerDeparted ? "Deleted Manager" : team.ownerName}
                         </p>
                       </div>
                       <div className="flex gap-1.5 flex-wrap justify-end">

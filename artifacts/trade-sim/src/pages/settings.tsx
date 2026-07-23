@@ -1,15 +1,32 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { User, Bell, BellOff, LogOut, ChevronRight } from "lucide-react";
+import { User, Bell, BellOff, LogOut, ChevronRight, Trash2 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { useAuth, useShowLeagueWarnings, useUpdateWarningsMutation } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
+import { deleteAccount } from "@workspace/api-client-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 export function SettingsPage() {
   const [, setLocation] = useLocation();
-  const { clearSession } = useSession();
+  const { sessionId, clearSession } = useSession();
   const { user, token, clearAuth } = useAuth();
   const showWarnings = useShowLeagueWarnings();
   const updateWarnings = useUpdateWarningsMutation();
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleSignOut = () => {
     clearSession();
@@ -19,6 +36,44 @@ export function SettingsPage() {
 
   const toggleWarnings = () => {
     updateWarnings.mutate(!showWarnings);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: (password: string) =>
+      deleteAccount(
+        { password },
+        sessionId
+          ? { headers: { "X-Session-Id": sessionId } }
+          : undefined,
+      ),
+    onSuccess: () => {
+      clearAuth();
+      clearSession();
+      setDeleteOpen(false);
+      setLocation("/");
+    },
+    onError: (err: any) => {
+      const status = err?.response?.status ?? err?.status;
+      if (status === 403) {
+        setDeleteError("Incorrect password.");
+      } else {
+        setDeleteError("Something went wrong. Please try again.");
+      }
+    },
+  });
+
+  const handleDeleteConfirm = () => {
+    setDeleteError(null);
+    deleteMutation.mutate(deletePassword);
+  };
+
+  const handleDeleteOpenChange = (open: boolean) => {
+    if (!open) {
+      setDeletePassword("");
+      setDeleteError(null);
+      deleteMutation.reset();
+    }
+    setDeleteOpen(open);
   };
 
   return (
@@ -47,11 +102,63 @@ export function SettingsPage() {
               </div>
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors text-left border-b border-white/5"
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </button>
+              <button
+                onClick={() => setDeleteOpen(true)}
+                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium text-destructive/70 hover:bg-destructive/5 hover:text-destructive transition-colors text-left"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete account
+              </button>
+
+              <AlertDialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-3">
+                      <span className="block">
+                        This is permanent. Your login, saved trades, and the ESPN connection on this browser will be deleted. Teams you manage in shared leagues will remain as &ldquo;Deleted Manager&rdquo; so those leagues keep working. Leagues you created where no one else has claimed a team will be deleted entirely.
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="px-1 pb-1 space-y-2">
+                    <Input
+                      type="password"
+                      placeholder="Enter your password to confirm"
+                      value={deletePassword}
+                      onChange={(e) => {
+                        setDeletePassword(e.target.value);
+                        setDeleteError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && deletePassword && !deleteMutation.isPending) {
+                          handleDeleteConfirm();
+                        }
+                      }}
+                      autoComplete="current-password"
+                    />
+                    {deleteError && (
+                      <p className="text-sm text-destructive">{deleteError}</p>
+                    )}
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleteMutation.isPending}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <button
+                      onClick={handleDeleteConfirm}
+                      disabled={!deletePassword || deleteMutation.isPending}
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                    >
+                      {deleteMutation.isPending ? "Deleting…" : "Delete"}
+                    </button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           ) : (
             <div className="p-5">

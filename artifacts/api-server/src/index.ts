@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { assertCookieCryptoReady } from "./lib/cookieCrypto";
+import { sweepExpiredSessions } from "./lib/sessionSweep";
 
 // ── Process-level crash guards ──────────────────────────────────────────────
 // These catch anything that escapes the Express error handler — e.g. errors
@@ -41,6 +42,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 assertCookieCryptoReady();
+sweepExpiredSessions();
 
 app.listen(port, (err) => {
   if (err) {

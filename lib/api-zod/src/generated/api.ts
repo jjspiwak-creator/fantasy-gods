@@ -75,6 +75,7 @@ export const GetLeagueTeamsResponseItem = zod.object({
   pointsFor: zod.number(),
   pointsAgainst: zod.number(),
   totalTradeValue: zod.number(),
+  ownerDeparted: zod.boolean().optional(),
   roster: zod.array(
     zod.object({
       id: zod.string(),
@@ -194,6 +195,7 @@ export const SimulateTradeBody = zod.object({
       pointsFor: zod.number(),
       pointsAgainst: zod.number(),
       totalTradeValue: zod.number(),
+      ownerDeparted: zod.boolean().optional(),
       roster: zod.array(
         zod.object({
           id: zod.string(),
@@ -1000,6 +1002,17 @@ export const UpdateUserSettingsResponse = zod
   .describe("Logged-in user account details");
 
 /**
+ * @summary Permanently delete the authenticated user's account
+ */
+export const DeleteAccountHeader = zod.object({
+  "X-Session-Id": zod.string().optional(),
+});
+
+export const DeleteAccountBody = zod.object({
+  password: zod.string(),
+});
+
+/**
  * @summary Create a manual league
  */
 export const createManualLeagueBodyNameMax = 60;
@@ -1093,6 +1106,7 @@ export const GetManualLeagueTeamsResponseItem = zod.object({
   pointsFor: zod.number(),
   pointsAgainst: zod.number(),
   totalTradeValue: zod.number(),
+  ownerDeparted: zod.boolean().optional(),
   roster: zod.array(
     zod.object({
       id: zod.string(),

@@ -266,7 +266,7 @@ function TradeBuilderCore({
                     </h4>
                     {isSelected && <CheckCircle2 className="w-5 h-5 text-primary" />}
                   </div>
-                  <p className="text-sm text-muted-foreground">{team.ownerName}</p>
+                  <p className="text-sm text-muted-foreground">{team.ownerDeparted ? "Deleted Manager" : team.ownerName}</p>
                 </div>
               );
             })}

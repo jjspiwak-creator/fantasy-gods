@@ -4,6 +4,7 @@ import { db, usersTable, savedTradesTable } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { signToken, verifyToken, hashPassword, comparePassword, extractToken } from "../lib/auth";
 import { logger } from "../lib/logger";
+import { deleteAccount } from "../lib/accountDeletion";
 
 const router = Router();
 
@@ -21,6 +22,10 @@ const LoginBody = z.object({
 const UpdateSettingsBody = z.object({
   showLeagueWarnings: z.boolean().optional(),
   vibePreference: z.enum(["corporate", "the_boys", "coach_speak", "vegas_degenerate"]).optional(),
+});
+
+const DeleteAccountBody = z.object({
+  password: z.string().min(1),
 });
 
 function serializeUser(user: typeof usersTable.$inferSelect) {
@@ -134,7 +139,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId));
     if (!user) {
-      res.status(404).json({ error: "User not found." });
+      res.status(401).json({ error: "Account no longer exists. Please sign in again." });
       return;
     }
     res.json(serializeUser(user));
@@ -187,6 +192,51 @@ router.patch("/auth/settings", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Error updating user settings");
     res.status(500).json({ error: "Could not update settings." });
+  }
+});
+
+router.delete("/auth/account", async (req, res): Promise<void> => {
+  const token = extractToken(req.headers.authorization);
+  if (!token) {
+    res.status(401).json({ error: "Not authenticated." });
+    return;
+  }
+
+  const payload = verifyToken(token);
+  if (!payload) {
+    res.status(401).json({ error: "Token is invalid or expired. Please sign in again." });
+    return;
+  }
+
+  const parsed = DeleteAccountBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Password is required." });
+    return;
+  }
+
+  const sessionId =
+    typeof req.headers["x-session-id"] === "string"
+      ? req.headers["x-session-id"] || null
+      : null;
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId));
+    if (!user) {
+      res.status(401).json({ error: "Account no longer exists." });
+      return;
+    }
+
+    const valid = await comparePassword(parsed.data.password, user.passwordHash);
+    if (!valid) {
+      res.status(403).json({ error: "Incorrect password." });
+      return;
+    }
+
+    await deleteAccount(payload.userId, sessionId);
+    res.status(204).send();
+  } catch (err) {
+    logger.error({ err }, "Error deleting account");
+    res.status(500).json({ error: "Account deletion failed. Please try again." });
   }
 });
 

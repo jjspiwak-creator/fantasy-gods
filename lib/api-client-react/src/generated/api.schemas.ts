@@ -61,6 +61,7 @@ export interface Team {
   pointsFor: number;
   pointsAgainst: number;
   totalTradeValue: number;
+  ownerDeparted?: boolean;
   roster: Player[];
 }
 
@@ -400,4 +401,8 @@ export type GetLeagueTeamsParams = {
 
 export type GetLeagueSettingsParams = {
   season?: string;
+};
+
+export type DeleteAccountBody = {
+  password: string;
 };
